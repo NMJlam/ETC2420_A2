@@ -1,8 +1,8 @@
 ---
 title: "ETC2420/5242 Assignment 2"
-subtitle: "Group [X] - [Your Group Name]"
+subtitle: "Group 76"
 author: 
-  - "Student Name 1 (Student ID)"
+  - "Nathan Lam (338 953 41)"
   - "Student Name 2 (Student ID)"
   - "Student Name 3 (Student ID)"
   - "Student Name 4 (Student ID)"
@@ -34,7 +34,7 @@ library(dplyr)
 library(ggplot2)
 
 # Set seed for reproducibility
-set.seed(24205242)  # Use your student ID
+set.seed(33895341)
 
 # Set knitr options
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE,
@@ -49,7 +49,7 @@ pedestrians <- read.csv("data/pedestrians.csv")
 
 # Task 1: \[20 Marks\]
 
-## Description
+### Description
 
 Your manager wants to understand the distribution of the number of people using the three pedestrian crossings. She would like some appropriate descriptive and visual summaries of the data. In addition, she would like fitted models for each crossing, which she wants to share with the engineering team to help with planning and design.
 
@@ -65,6 +65,14 @@ Required analyses and components:
 
 ## Requirement 1: Plots to visualize the data
 
+### Approach
+
+A histogram is used to show the shape of the traffic distribution at each crossing. This allows us to summarize the distribution of the foot traffic at each section.
+
+A box-whisker plot is used to display the central tendency of the how the foot traffic is being spread
+
+### Technical Analysis
+
 **Data preparation**
 
 ```{r task1-data-prep}
@@ -74,9 +82,7 @@ ped_long <- pedestrians |>
                values_to = "count")
 ```
 
-**Requirement 1.1: Histogram:**
-
-A histogram is used to show the shape of the traffic distribution at each crossing. This allows us to summarize the distribution of the foot traffic at each section.
+#### Histogram
 
 [Creating a function to plot the graphs using a histogram.]{.underline}
 
@@ -91,15 +97,7 @@ plot_3_histograms <- function(long_data, binwidth = 50) {
 }
 ```
 
-[Display the histograms]{.underline}
-
-```{r task 1 plots}
-plot_3_histograms(ped_long)
-```
-
-**Requirement 1.2: Box-Whisker Plot**
-
-A box-whisker plot is used to display the central tendency of the how the foot traffic is being spread
+#### Box-Whisker Plot
 
 [Creating a function to plot the graphs in a box-whisker plot]{.underline}
 
@@ -115,13 +113,37 @@ plot_boxplots <- function(long_data) {
 }
 ```
 
+### Results
+
+[Display the histograms]{.underline}
+
+```{r task 1 plots}
+plot_3_histograms(ped_long)
+```
+
 [Display the box-whisker plots.]{.underline}
 
 ```{r}
 plot_boxplots(ped_long)
 ```
 
+### Interpretation
+
+-   Explain what the box-whisker and the bar graph shows about the foot traffic in each of the locations
+
+### Conclusions
+
+-   Conclusions on the central tendency in a non-technical way.
+
 ## Requirement 2: Appropriate Summary Statistics
+
+### Approach
+
+Explain why we have continuous and not discrete values – why?
+
+This will guide the summary statistics we will provide.
+
+### Technical Analysis
 
 ```{R task1-summary statistics}
 # Requirement 2: Appropriate summary statistics
@@ -129,7 +151,11 @@ get_mode <- function(x) {
   ux <- unique(x)
   ux[which.max(tabulate(match(x, ux)))]
 }
+```
 
+### Results
+
+```{r}
 ped_descriptive <- ped_long |>
   group_by(location) |>
   summarise(
@@ -146,7 +172,45 @@ ped_descriptive <- ped_long |>
 ped_descriptive
 ```
 
+### Interpretation
+
+Explain the statistics in a technical way
+
+### Conclusions
+
+Explain the statistics in a non-technical way
+
 ## Requirement 3: Fit appropriate models to the data, and report the resulting estimates.
+
+1)  Choose a model for the data
+
+2)  "Fit" the model
+
+3)  Assess the adequacy of the model
+
+### Approach
+
+1)  Choose a model for the data
+
+Flinders_street: mean = median Southern Cross: mean = median qv: slight right skew
+
+```{r}
+summary_stats <- pedestrians %>%
+  summarise(
+    across(everything(),
+           list(mean = mean, 
+                median = median, 
+                mode = ~as.numeric(names(sort(table(.), decreasing = TRUE)[1]))))
+  )
+
+summary_stats
+```
+
+-   Explain why we reported standard error
+
+-   Explain why we have the parameters
+
+### Technical Analysis
 
 ```{r data-preparation}
 qv_melbourne_traffic <- pedestrians[["qv_melbourne"]]
@@ -154,31 +218,55 @@ southern_cross_traffic <- pedestrians[["southern_cross"]]
 flinders_street_traffic <- pedestrians[["flinders_street"]]
 ```
 
-1)  Choose a model for the data
-
-Flinders_street: mean = median Southern Cross: mean = median qv: slight right skew
-
 2)  "Fit" the model
 
 ```{r fit-model}
-fit_flinders_norm <- fitdistr(flinders_street_traffic, "normal")
-fit_southern_norm <- fitdistr(southern_cross_traffic,   "normal")
-fit_qv_gamma      <- fitdistr(qv_melbourne_traffic,     "gamma")
+fit_flinders <- fitdistr(flinders_street_traffic, "normal")
+fit_southern <- fitdistr(southern_cross_traffic, "normal")
+fit_qv       <- fitdistr(qv_melbourne_traffic, "gamma")
 
+```
+
+### Results
+
+MUST SEPARATE GAMMA AND NORMAL
+
+```{r}
 estimates <- tibble(
-  location = c("flinders_street", "southern_cross", "qv_melbourne"),
+  location = c("Flinders Street", "Southern Cross", "QV Melbourne"),
   model    = c("Normal", "Normal", "Gamma"),
-  par1     = c(fit_flinders_norm$estimate["mean"],
-               fit_southern_norm$estimate["mean"],
-               fit_qv_gamma$estimate["shape"]),
-  par2     = c(fit_flinders_norm$estimate["sd"],
-               fit_southern_norm$estimate["sd"],
-               fit_qv_gamma$estimate["rate"])
+  par1     = c(fit_flinders$estimate["mean"],
+               fit_southern$estimate["mean"],
+               fit_qv$estimate["shape"]),
+  se1      = c(fit_flinders$sd["mean"],
+               fit_southern$sd["mean"],
+               fit_qv$sd["shape"]),
+  par2     = c(fit_flinders$estimate["sd"],
+               fit_southern$estimate["sd"],
+               fit_qv$estimate["rate"]),
+  se2      = c(fit_flinders$sd["sd"],
+               fit_southern$sd["sd"],
+               fit_qv$sd["rate"])
 )
+
 estimates
 ```
 
+### Interpretation
+
+Explain tehcnically
+
+### Conclusions
+
+non-technical explanations
+
 ## Requirement 4: Assess the adequacy of the model fits, using appropriate statistical techniques.
+
+### Approach
+
+Explain why plotting using a QQ plot allows us to assess the model fits
+
+### Technical Analysis
 
 ```{r}
 # Flinders (Normal QQ)
@@ -212,11 +300,45 @@ ggplot(tibble(x = qv_melbourne_traffic), aes(sample = x)) +
   labs(title = "QV Melbourne: Gamma QQ plot")
 ```
 
+### Results
+
+Interpret the results by observing the variances from the line
+
+### Interpretation
+
+Show through a separate plot how they are similar and explain why using the QQ plot
+
+### Conclusions
+
+Concluded in a non-technical way
+
 # Task 2: \[20 marks\]
 
 ## Introduction
 
-The task is to calculate the 90th percentile of the amount of traffic in each of the crossings (Southern Cross, Flinder's Street, QV Melbourne)
+The traffic regulations require that crossings are designed to have
+smooth pedestrian flow 90% of the time. To help the engineering team
+assess whether the crossings are large enough to meet the regulations,
+they would like an estimate of 90th percentile amount of traffic for
+each crossing. Use two approaches (as outlined below) and provide
+interval estimates for each.
+
+Required analyses and components:
+
+-   As the first approach, use the *sample quantile* as the estimator. This is implemented in R by the function `quantile()`.
+
+-   As the second approach, use estimators based on the models you fitted in [Task 1](file:///Users/natha/Downloads/assignment2.html#task-1).
+
+-   Calculate 95% confidence intervals based on each of the
+    estimators above. Use any method that you think is appropriate, and
+    justify your choice.
+
+-   Provide an overall conclusion, including recommendations about
+    which of these estimates are likely to be more useful or reliable.
+
+-   In your report, explain the key statistical ideas to the manager,
+    including what the parameter of interest is, how it relates to the
+    data, and what assumptions you are making for each estimate.
 
 ## Data Preparation
 
