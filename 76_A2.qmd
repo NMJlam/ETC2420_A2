@@ -1,13 +1,335 @@
 ---
-title: "76_A2.pdf"
-format: html
-editor: visual
+title: "ETC2420/5242 Assignment 2"
+subtitle: "Group [X] - [Your Group Name]"
+author: 
+  - "Student Name 1 (Student ID)"
+  - "Student Name 2 (Student ID)"
+  - "Student Name 3 (Student ID)"
+  - "Student Name 4 (Student ID)"
+date: "13 October 2025"
+format:
+  pdf:
+    toc: true
+    toc-depth: 2
+    number-sections: true
+    colorlinks: true
+    geometry:
+      - margin=2.5cm
+    fontsize: 11pt
+execute:
+  echo: true
+  warning: false
+  message: false
+  eval: true
 ---
 
-# Group 76 Assignment 2 
-
-Utils
-```{r}
-data <- read.csv("data/pedestrians.csv")
-head(data)
+```{r setup}
+#| include: false
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE,
+                      eval = TRUE, message = FALSE)
 ```
+
+```{r load-packages}
+# Load required packages
+library(tidyverse)
+library(here)
+# Add other packages as needed
+```
+
+```{r load-data}
+# Load data files
+# data <- read_csv(here("data", "filename.csv"))
+```
+
+\newpage
+
+# Task 1: \[Task Title\]
+
+## Introduction
+
+<!-- Provide a brief overview of Task 1 and your approach -->
+
+## Data Exploration
+
+```{r task1-exploration}
+# Exploratory analysis code
+
+```
+
+<!-- Describe what you found in your exploration -->
+
+## Analysis
+
+### Technical Approach
+
+<!-- Describe the statistical methods and techniques you will use -->
+
+```{r task1-analysis}
+# Main analysis code
+
+```
+
+### Results
+
+<!-- Present your results with appropriate visualizations -->
+
+```{r task1-plots}
+# Create visualizations
+
+```
+
+**Figure 1.1:** \[Caption describing the plot\]
+
+<!-- Interpret the results technically -->
+
+## Interpretation
+
+<!-- Non-technical explanation of your findings -->
+
+## Conclusions and Recommendations
+
+<!-- Evidence-based conclusions for Task 1 -->
+
+\newpage
+
+# Task 2: \[Task Title\]
+
+## Introduction
+
+<!-- Provide a brief overview of Task 2 and your approach -->
+
+## Data Preparation
+
+```{r task2-data-prep}
+# Data wrangling and preparation
+
+```
+
+## Analysis
+
+### Technical Approach
+
+<!-- Describe your methodology -->
+
+```{r task2-analysis}
+# Main analysis code
+
+```
+
+### Results
+
+```{r task2-results}
+# Generate results and visualizations
+
+```
+
+**Figure 2.1:** \[Caption describing the plot\]
+
+<!-- Technical interpretation of results -->
+
+## Interpretation
+
+<!-- Non-technical explanation for a general audience -->
+
+## Conclusions and Recommendations
+
+<!-- Evidence-based conclusions for Task 2 -->
+
+\newpage
+
+# Task 3: \[Task Title\]
+
+## Introduction
+
+<!-- Overview of Task 3 -->
+
+## Methodology
+
+### Data Processing
+
+```{r task3-data}
+# Data processing code
+
+```
+
+### Statistical Methods
+
+<!-- Explain the statistical techniques used -->
+
+```{r task3-methods}
+# Implementation of statistical methods
+
+```
+
+## Results and Visualizations
+
+```{r task3-plots}
+# Create visualizations
+
+```
+
+**Figure 3.1:** \[Caption\]
+
+### Technical Analysis
+
+<!-- Technical interpretation -->
+
+### Non-Technical Summary
+
+<!-- Explain findings in accessible language -->
+
+## Conclusions and Recommendations
+
+<!-- Evidence-based conclusions for Task 3 -->
+
+\newpage
+
+# Task 4: \[Task Title\]
+
+## Introduction
+
+<!-- Overview of Task 4 -->
+
+## Analysis Approach
+
+### Data Exploration
+
+```{r task4-exploration}
+# Exploratory analysis
+
+```
+
+### Statistical Analysis
+
+<!-- Describe your analytical approach -->
+
+```{r task4-analysis}
+# Main analysis code
+
+```
+
+## Results
+
+```{r task4-results}
+# Results and visualizations
+
+```
+
+**Figure 4.1:** \[Caption\]
+
+### Technical Findings
+
+<!-- Technical interpretation of results -->
+
+### Practical Implications
+
+<!-- Non-technical explanation and real-world implications -->
+
+## Conclusions and Recommendations
+
+<!-- Evidence-based conclusions for Task 4 -->
+
+\newpage
+
+# Task 5: \[Task Title\]
+
+## Introduction
+
+<!-- Overview of Task 5 -->
+
+## Comprehensive Analysis
+
+### Data Integration
+
+```{r task5-data-integration}
+# Combining and processing data
+
+```
+
+### Analytical Framework
+
+<!-- Describe your comprehensive approach -->
+
+```{r task5-framework}
+# Implementation of analytical framework
+
+```
+
+## Results and Insights
+
+```{r task5-results}
+# Generate comprehensive results
+
+```
+
+**Figure 5.1:** \[Caption\]
+
+### Technical Analysis
+
+<!-- Detailed technical interpretation -->
+
+### Business/Practical Interpretation
+
+<!-- Non-technical explanation for decision-makers -->
+
+## Final Conclusions and Recommendations
+
+<!-- Overall evidence-based conclusions for Task 5 -->
+
+\newpage
+
+# Overall Summary and Conclusions
+
+```{=html}
+<!-- 
+Provide a brief summary of key findings across all tasks.
+Highlight the most important insights and recommendations.
+-->
+```
+
+## Key Findings
+
+<!-- Summarize main results from all tasks -->
+
+## Limitations
+
+<!-- Discuss any limitations of your analysis -->
+
+## Future Directions
+
+<!-- Suggest areas for further investigation -->
+
+\newpage
+
+# Appendix (Optional)
+
+## Additional Code
+
+```{r appendix-code}
+# Any supplementary code that supports your analysis
+# but is too detailed for the main sections
+
+```
+
+## Additional Tables and Figures
+
+<!-- Include any supplementary materials here -->
+
+\newpage
+
+# References
+
+```{=html}
+<!-- 
+If you use external sources, cite them appropriately.
+You can use Quarto's citation features or list them manually.
+-->
+```
+
+## Session Information
+
+```{r session-info}
+sessionInfo()
+```
+
+**Note:** This ensures reproducibility by documenting package versions used.
