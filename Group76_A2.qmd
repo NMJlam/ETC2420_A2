@@ -31,6 +31,7 @@ library(tidyverse)
 library(gridExtra) 
 library(broom)      
 library(dplyr)
+library(ggplot2)
 
 # Set seed for reproducibility
 set.seed(24205242)  # Use your student ID
@@ -46,53 +47,103 @@ pedestrians <- read.csv("data/pedestrians.csv")
 
 \newpage
 
-# Task 1: \[Task Title\]
+# Task 1: \[20 Marks\]
 
-## Introduction
+## Description
 
+Your manager wants to understand the distribution of the number of people using the three pedestrian crossings. She would like some appropriate descriptive and visual summaries of the data. In addition, she would like fitted models for each crossing, which she wants to share with the engineering team to help with planning and design.
 
-## Data Exploration
+Required analyses and components:
 
-```{r task1-exploration}
-# Exploratory analysis code
+-   One or more appropriate plots to visualize the data.
 
+-   Some appropriate descriptive statistics.
+
+-   Fit appropriate models to the data, and report the resulting estimates.
+
+-   Assess the adequacy of the model fits, using appropriate statistical techniques.
+
+## Requirement 1: Plots to visualize the data
+
+**Data preparation**
+
+```{r task1-data-prep}
+ped_long <- pedestrians |>
+  pivot_longer(cols = everything(),
+               names_to = "location",
+               values_to = "count")
 ```
 
-<!-- Describe what you found in your exploration -->
+**Requirement 1.1: Histogram:**
 
-## Analysis
+A histogram is used to show the shape of the traffic distribution at each crossing. This allows us to summarize the distribution of the foot traffic at each section.
 
-### Technical Approach
-
-<!-- Describe the statistical methods and techniques you will use -->
-
-```{r task1-analysis}
-# Main analysis code
-
-```
-
-### Results
-
-<!-- Present your results with appropriate visualizations -->
+[Creating a function to plot the graphs using a histogram.]{.underline}
 
 ```{r task1-plots}
-# Create visualizations
-
+# Requirement 1: Plot histograms/density for each location
+plot_3_histograms <- function(long_data, binwidth = 50) {
+  ggplot(long_data, aes(x = count)) +
+    geom_histogram(binwidth = binwidth, fill = "skyblue", colour = "black") +
+    facet_wrap(~ location, scales = "free") +
+    labs(title = "Distribution of pedestrian counts",
+         x = "Pedestrian count per hour", y = "Frequency")
+}
 ```
 
-**Figure 1.1:** \[Caption describing the plot\]
+[Display the histograms]{.underline}
 
-<!-- Interpret the results technically -->
+```{r task 1 plots}
+plot_3_histograms(ped_long)
+```
 
-## Interpretation
+**Requirement 1.2: Box-Whisker Plot**
 
-<!-- Non-technical explanation of your findings -->
+A box-whisker plot is used to display the central tendency of the how the foot traffic is being spread
 
-## Conclusions and Recommendations
+[Creating a function to plot the graphs in a box-whisker plot]{.underline}
 
-<!-- Evidence-based conclusions for Task 1 -->
+```{r}
+plot_boxplots <- function(long_data) {
+  long_data |>
+    mutate(location = forcats::fct_relevel(location, sort(unique(location)))) |>
+    ggplot(aes(x = location, y = count, fill = location)) +
+    geom_boxplot(outlier.colour = "red", outlier.shape = 16, outlier.size = 2) +
+    labs(title = "Pedestrian counts by location",
+         x = "Location", y = "Pedestrian count per hour") +
+    theme_minimal() + theme(legend.position = "none")
+}
+```
 
-\newpage
+[Display the box-whisker plots.]{.underline}
+
+```{r}
+plot_boxplots(ped_long)
+```
+## Requirement 3: Fit appropriate models to the data, and report the resulting estimates.
+
+## Requirement 4: Assess the adequacy of the model fits, using appropriate statistical techniques.
+
+## Requirement 2: Appropriate Summary Statistics
+
+```{R task1-summary statistics}
+# Requirement 2: Appropriate summary statistics
+ped_descriptive <- ped_long |>
+  group_by(location) |>
+  summarise(
+    mean = mean(count),
+    median = median(count),
+    sd = sd(count),
+    min = min(count),
+    max = max(count),
+    q1 = quantile(count, 0.25),
+    q3 = quantile(count, 0.75)
+  )
+
+ped_descriptive
+```
+
+
 
 # Task 2: \[20 marks\]
 
