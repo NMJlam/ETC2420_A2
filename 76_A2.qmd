@@ -1,0 +1,13 @@
+---
+title: "76_A2.pdf"
+format: html
+editor: visual
+---
+
+# Group 76 Assignment 2 
+
+Utils
+```{r}
+data <- read.csv("data/pedestrians.csv")
+head(data)
+```
