@@ -23,22 +23,25 @@ execute:
   eval: true
 ---
 
+# Initial Setup
+
 ```{r setup}
-#| include: false
+# Load required libraries
+library(tidyverse)
+library(gridExtra) 
+library(broom)      
+library(dplyr)
+
+# Set seed for reproducibility
+set.seed(24205242)  # Use your student ID
+
+# Set knitr options
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE,
                       eval = TRUE, message = FALSE)
-```
 
-```{r load-packages}
-# Load required packages
-library(tidyverse)
-library(here)
-# Add other packages as needed
-```
-
-```{r load-data}
-# Load data files
-# data <- read_csv(here("data", "filename.csv"))
+# Read data (adjust path as needed)
+pedestrians <- read.csv("data/pedestrians.csv")
+# Verify that the data exists 
 ```
 
 \newpage
@@ -47,7 +50,6 @@ library(here)
 
 ## Introduction
 
-<!-- Provide a brief overview of Task 1 and your approach -->
 
 ## Data Exploration
 
@@ -92,38 +94,75 @@ library(here)
 
 \newpage
 
-# Task 2: \[Task Title\]
+# Task 2: \[20 marks\]
 
 ## Introduction
 
-<!-- Provide a brief overview of Task 2 and your approach -->
+The task is to calculate the 90th percentile of the amount of traffic in each of the crossings (Southern Cross, Flinder's Street, QV Melbourne)
 
 ## Data Preparation
 
 ```{r task2-data-prep}
-# Data wrangling and preparation
-
+# Get each of the locations
+qv_melbourne_traffic <- pedestrians[["qv_melbourne"]]
+southern_cross_traffic <- pedestrians[["southern_cross"]]
+flinders_street_traffic <- pedestrians[["flinders_street"]]
 ```
-
-## Analysis
 
 ### Technical Approach
 
-<!-- Describe your methodology -->
+**Approach 1: Sample (Empirical) Quantile Method**
+
+This involves bootstrapping, where many re-samples of the original data are created (with replacement) to emulate the variability we would see if we could repeatedly sample from the real population.
+
+For each bootstrap sample, we calculate the 90th percentile—the value below which 90% of the observations in that specific sample fall. We repeat this process thousands of times, accumulating all of these 90th percentile values to create a distribution of the 90th percentile estimator.
+
+We then find the 2.5th and 97.5th percentiles of this bootstrap distribution to construct a 95% confidence interval. This interval provides our estimate of the true population 90th percentile with 95% confidence, allowing us to determine the traffic level that each crossing must accommodate to ensure smooth pedestrian flow 90% of the time.
 
 ```{r task2-analysis}
-# Main analysis code
-
+# Approach 1: Sample (Empirical) Quantile Method
+find_90th_percentile <- function(data, trials = 5000) {
+  # Ensure data is a numeric vector
+  if (!is.numeric(data)) {
+    stop("Input must be a numeric vector.")
+  }
+  
+  # Remove missing values
+  x <- data[!is.na(data)]
+  n <- length(x)
+  if (n == 0) stop("No data points available after removing NA.")
+  
+  # Bootstrap resamples
+  q_boot <- replicate(trials, {
+    xb <- sample(x, size = n, replace = TRUE)
+    as.numeric(quantile(xb, probs = 0.9, type = 7))
+  })
+  
+  # 95% CI from bootstrap distribution
+  ci <- quantile(q_boot, probs = c(0.025, 0.975))
+  
+  result <- list(
+    ci_lower = unname(ci[1]),
+    ci_upper = unname(ci[2])
+  )
+  
+  return(result)
+}
 ```
+
+**Approach 2: Model Based Quantile**
 
 ### Results
 
 ```{r task2-results}
-# Generate results and visualizations
+# Approach 1: Sample (Empirical) Quantile Method
+qv_estimate_bootstrap <- find_90th_percentile(qv_melbourne_traffic)
+flinders_estimate_bootstrap <- find_90th_percentile(flinders_street_traffic)
+southern_estimate_bootstrap <- find_90th_percentile(southern_cross_traffic)
+
+# Approach 2: Model Based Quantile
 
 ```
-
-**Figure 2.1:** \[Caption describing the plot\]
 
 <!-- Technical interpretation of results -->
 
