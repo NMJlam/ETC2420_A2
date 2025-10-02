@@ -120,19 +120,22 @@ plot_boxplots <- function(long_data) {
 ```{r}
 plot_boxplots(ped_long)
 ```
-## Requirement 3: Fit appropriate models to the data, and report the resulting estimates.
-
-## Requirement 4: Assess the adequacy of the model fits, using appropriate statistical techniques.
 
 ## Requirement 2: Appropriate Summary Statistics
 
 ```{R task1-summary statistics}
 # Requirement 2: Appropriate summary statistics
+get_mode <- function(x) {
+  ux <- unique(x)
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
 ped_descriptive <- ped_long |>
   group_by(location) |>
   summarise(
     mean = mean(count),
     median = median(count),
+    mode = get_mode(count),
     sd = sd(count),
     min = min(count),
     max = max(count),
@@ -143,7 +146,71 @@ ped_descriptive <- ped_long |>
 ped_descriptive
 ```
 
+## Requirement 3: Fit appropriate models to the data, and report the resulting estimates.
 
+```{r data-preparation}
+qv_melbourne_traffic <- pedestrians[["qv_melbourne"]]
+southern_cross_traffic <- pedestrians[["southern_cross"]]
+flinders_street_traffic <- pedestrians[["flinders_street"]]
+```
+
+1)  Choose a model for the data
+
+Flinders_street: mean = median Southern Cross: mean = median qv: slight right skew
+
+2)  "Fit" the model
+
+```{r fit-model}
+fit_flinders_norm <- fitdistr(flinders_street_traffic, "normal")
+fit_southern_norm <- fitdistr(southern_cross_traffic,   "normal")
+fit_qv_gamma      <- fitdistr(qv_melbourne_traffic,     "gamma")
+
+estimates <- tibble(
+  location = c("flinders_street", "southern_cross", "qv_melbourne"),
+  model    = c("Normal", "Normal", "Gamma"),
+  par1     = c(fit_flinders_norm$estimate["mean"],
+               fit_southern_norm$estimate["mean"],
+               fit_qv_gamma$estimate["shape"]),
+  par2     = c(fit_flinders_norm$estimate["sd"],
+               fit_southern_norm$estimate["sd"],
+               fit_qv_gamma$estimate["rate"])
+)
+estimates
+```
+
+## Requirement 4: Assess the adequacy of the model fits, using appropriate statistical techniques.
+
+```{r}
+# Flinders (Normal QQ)
+ggplot(tibble(x = flinders_street_traffic), aes(sample = x)) +
+  stat_qq(distribution = qnorm,
+          dparams = list(mean = fit_flinders_norm$estimate["mean"],
+                         sd   = fit_flinders_norm$estimate["sd"])) +
+  stat_qq_line(distribution = qnorm,
+               dparams = list(mean = fit_flinders_norm$estimate["mean"],
+                              sd   = fit_flinders_norm$estimate["sd"])) +
+  labs(title = "Flinders Street: Normal QQ plot")
+
+# Southern Cross (Normal QQ)
+ggplot(tibble(x = southern_cross_traffic), aes(sample = x)) +
+  stat_qq(distribution = qnorm,
+          dparams = list(mean = fit_southern_norm$estimate["mean"],
+                         sd   = fit_southern_norm$estimate["sd"])) +
+  stat_qq_line(distribution = qnorm,
+               dparams = list(mean = fit_southern_norm$estimate["mean"],
+                              sd   = fit_southern_norm$estimate["sd"])) +
+  labs(title = "Southern Cross: Normal QQ plot")
+
+# QV (Gamma QQ)
+ggplot(tibble(x = qv_melbourne_traffic), aes(sample = x)) +
+  stat_qq(distribution = qgamma,
+          dparams = list(shape = fit_qv_gamma$estimate["shape"],
+                         rate  = fit_qv_gamma$estimate["rate"])) +
+  stat_qq_line(distribution = qgamma,
+               dparams = list(shape = fit_qv_gamma$estimate["shape"],
+                              rate  = fit_qv_gamma$estimate["rate"])) +
+  labs(title = "QV Melbourne: Gamma QQ plot")
+```
 
 # Task 2: \[20 marks\]
 
@@ -162,7 +229,7 @@ flinders_street_traffic <- pedestrians[["flinders_street"]]
 
 ### Technical Approach
 
-**Approach 1: Sample (Empirical) Quantile Method**
+**Approach 1: Non-parametric Quantile Method**
 
 This involves bootstrapping, where many re-samples of the original data are created (with replacement) to emulate the variability we would see if we could repeatedly sample from the real population.
 
@@ -201,7 +268,81 @@ find_90th_percentile <- function(data, trials = 5000) {
 }
 ```
 
-**Approach 2: Model Based Quantile**
+**Approach 2: Parametric Quantile method**
+
+```{r}
+find_90thPercentile_normal <- function(data, trials = 5000) {
+  x <- as.numeric(data)
+  x <- x[is.finite(x)]
+  n <- length(x)
+  if (n < 2) stop("Need at least 2 observations.")
+
+  # 1. Fit Normal model by MLE
+  mu_hat <- mean(x)
+  sigma_hat <- sqrt(mean((x - mu_hat)^2))  # MLE version, divides by n
+
+  # 2. Point estimate of the 90th percentile
+  q90_hat <- qnorm(0.90, mean = mu_hat, sd = sigma_hat)
+
+  # 3. Parametric bootstrap for 95% CI
+  q_boot <- replicate(trials, {
+    # simulate new sample from fitted Normal
+    xb <- rnorm(n, mean = mu_hat, sd = sigma_hat)
+    # re-fit Normal on xb
+    mu_b <- mean(xb)
+    sd_b <- sqrt(mean((xb - mu_b)^2))
+    # compute q90 for this bootstrap sample
+    qnorm(0.90, mean = mu_b, sd = sd_b)
+  })
+
+  # CI = central 95% of bootstrap distribution
+  ci <- quantile(q_boot, c(0.025, 0.975), names = FALSE)
+
+  # Return point estimate + CI
+  list(
+    ci_lower = ci[1],
+    ci_upper = ci[2]
+  )
+}
+
+find_90thPercentile_gamma <- function(data, trials = 5000) {
+  x <- as.numeric(data)
+  x <- x[is.finite(x)]
+  n <- length(x)
+  if (n < 2) stop("Need at least 2 observations.")
+  if (any(x <= 0)) stop("Gamma model requires strictly positive data.")
+
+  # 1. Fit Gamma model by MLE
+  # Requires MASS::fitdistr (Week 6 lecture)
+  fit <- MASS::fitdistr(x, densfun = "gamma")
+  shape_hat <- unname(fit$estimate["shape"])
+  rate_hat  <- unname(fit$estimate["rate"])
+
+  # 2. Point estimate of the 90th percentile
+  q90_hat <- qgamma(0.90, shape = shape_hat, rate = rate_hat)
+
+  # 3. Parametric bootstrap for 95% CI
+  q_boot <- replicate(trials, {
+    # simulate new sample from fitted Gamma
+    xb <- rgamma(n, shape = shape_hat, rate = rate_hat)
+    # re-fit Gamma on xb
+    fit_b <- MASS::fitdistr(xb, densfun = "gamma")
+    sh_b <- unname(fit_b$estimate["shape"])
+    rt_b <- unname(fit_b$estimate["rate"])
+    # compute q90 for this bootstrap sample
+    qgamma(0.90, shape = sh_b, rate = rt_b)
+  })
+
+  # CI = central 95% of bootstrap distribution
+  ci <- quantile(q_boot, c(0.025, 0.975), names = FALSE)
+
+  # Return point estimate + CI
+  list(
+    ci_lower = ci[1],
+    ci_upper = ci[2]
+  )
+}
+```
 
 ### Results
 
@@ -212,7 +353,10 @@ flinders_estimate_bootstrap <- find_90th_percentile(flinders_street_traffic)
 southern_estimate_bootstrap <- find_90th_percentile(southern_cross_traffic)
 
 # Approach 2: Model Based Quantile
+qv_estimate_gamma <- find_90thPercentile_gamma(qv_melbourne_traffic)
 
+flinders_estimate_normal <- find_90thPercentile_normal(flinders_street_traffic)
+southern_estimate_normal <- find_90thPercentile_normal(southern_cross_traffic)
 ```
 
 <!-- Technical interpretation of results -->
@@ -232,6 +376,8 @@ southern_estimate_bootstrap <- find_90th_percentile(southern_cross_traffic)
 ## Introduction
 
 <!-- Overview of Task 3 -->
+
+welch
 
 ## Methodology
 
