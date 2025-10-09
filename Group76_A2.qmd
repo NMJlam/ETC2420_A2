@@ -32,6 +32,7 @@ library(gridExtra)
 library(broom)      
 library(dplyr)
 library(ggplot2)
+library(MASS)
 
 # Set seed for reproducibility
 set.seed(33895341)
@@ -272,31 +273,31 @@ Explain why plotting using a QQ plot allows us to assess the model fits
 # Flinders (Normal QQ)
 ggplot(tibble(x = flinders_street_traffic), aes(sample = x)) +
   stat_qq(distribution = qnorm,
-          dparams = list(mean = fit_flinders_norm$estimate["mean"],
-                         sd   = fit_flinders_norm$estimate["sd"])) +
+          dparams = list(mean = fit_flinders$estimate["mean"],
+                         sd   = fit_flinders$estimate["sd"])) +
   stat_qq_line(distribution = qnorm,
-               dparams = list(mean = fit_flinders_norm$estimate["mean"],
-                              sd   = fit_flinders_norm$estimate["sd"])) +
+               dparams = list(mean = fit_flinders$estimate["mean"],
+                              sd   = fit_flinders$estimate["sd"])) +
   labs(title = "Flinders Street: Normal QQ plot")
 
 # Southern Cross (Normal QQ)
 ggplot(tibble(x = southern_cross_traffic), aes(sample = x)) +
   stat_qq(distribution = qnorm,
-          dparams = list(mean = fit_southern_norm$estimate["mean"],
-                         sd   = fit_southern_norm$estimate["sd"])) +
+          dparams = list(mean = fit_southern$estimate["mean"],
+                         sd   = fit_southern$estimate["sd"])) +
   stat_qq_line(distribution = qnorm,
-               dparams = list(mean = fit_southern_norm$estimate["mean"],
-                              sd   = fit_southern_norm$estimate["sd"])) +
+               dparams = list(mean = fit_southern$estimate["mean"],
+                              sd   = fit_southern$estimate["sd"])) +
   labs(title = "Southern Cross: Normal QQ plot")
 
 # QV (Gamma QQ)
 ggplot(tibble(x = qv_melbourne_traffic), aes(sample = x)) +
   stat_qq(distribution = qgamma,
-          dparams = list(shape = fit_qv_gamma$estimate["shape"],
-                         rate  = fit_qv_gamma$estimate["rate"])) +
+          dparams = list(shape = fit_qv$estimate["shape"],
+                         rate  = fit_qv$estimate["rate"])) +
   stat_qq_line(distribution = qgamma,
-               dparams = list(shape = fit_qv_gamma$estimate["shape"],
-                              rate  = fit_qv_gamma$estimate["rate"])) +
+               dparams = list(shape = fit_qv$estimate["shape"],
+                              rate  = fit_qv$estimate["rate"])) +
   labs(title = "QV Melbourne: Gamma QQ plot")
 ```
 
@@ -316,12 +317,7 @@ Concluded in a non-technical way
 
 ## Introduction
 
-The traffic regulations require that crossings are designed to have
-smooth pedestrian flow 90% of the time. To help the engineering team
-assess whether the crossings are large enough to meet the regulations,
-they would like an estimate of 90th percentile amount of traffic for
-each crossing. Use two approaches (as outlined below) and provide
-interval estimates for each.
+The traffic regulations require that crossings are designed to have smooth pedestrian flow 90% of the time. To help the engineering team assess whether the crossings are large enough to meet the regulations, they would like an estimate of 90th percentile amount of traffic for each crossing. Use two approaches (as outlined below) and provide interval estimates for each.
 
 Required analyses and components:
 
@@ -329,16 +325,11 @@ Required analyses and components:
 
 -   As the second approach, use estimators based on the models you fitted in [Task 1](file:///Users/natha/Downloads/assignment2.html#task-1).
 
--   Calculate 95% confidence intervals based on each of the
-    estimators above. Use any method that you think is appropriate, and
-    justify your choice.
+-   Calculate 95% confidence intervals based on each of the estimators above. Use any method that you think is appropriate, and justify your choice.
 
--   Provide an overall conclusion, including recommendations about
-    which of these estimates are likely to be more useful or reliable.
+-   Provide an overall conclusion, including recommendations about which of these estimates are likely to be more useful or reliable.
 
--   In your report, explain the key statistical ideas to the manager,
-    including what the parameter of interest is, how it relates to the
-    data, and what assumptions you are making for each estimate.
+-   In your report, explain the key statistical ideas to the manager, including what the parameter of interest is, how it relates to the data, and what assumptions you are making for each estimate.
 
 ## Data Preparation
 
@@ -493,21 +484,70 @@ southern_estimate_normal <- find_90thPercentile_normal(southern_cross_traffic)
 
 \newpage
 
-# Task 3: \[Task Title\]
+# Task 3: \[16 Marks\]
 
 ## Introduction
 
-<!-- Overview of Task 3 -->
+The engineers have identified that they need to make some upgrades to the crossings outside of the two railway stations (Flinders Street and Southern Cross). To save money, they are hoping they can use the same design and materials for both crossings. They can do so only if the average number of people using each crossing is similar. Specifically, the difference between the averages needs to be no more than 80 people per hour.
 
-welch
+Can the engineers safely save money in this case? Is the difference small enough and how certain can we be?
+
+Required analyses and components:
+-   Calculate an appropriate 95% confidence interval for the difference in the mean number of people crossing outside the two railway stations. x
+-   Comment on whether it is valid to use the Central Limit Theorem when calculating this confidence interval. x 
+-   Based on your confidence interval, what conclusions can you provide to the engineering team? x
+-   Illustrate your analysis with any appropriate plots.
 
 ## Methodology
+
+- Determine if the averages of the 2 crossings (flinders stree and southern cross) are greater than 80 people per hour
 
 ### Data Processing
 
 ```{r task3-data}
-# Data processing code
+# Prepare the data
+flinders <- pedestrians$flinders_street
+southern <- pedestrians$southern_cross
 
+ped_long |>
+  filter(location %in% c("flinders_street", "southern_cross")) |>
+  ggplot(aes(x = count, fill = location)) +
+  geom_density(alpha = 0.4) +
+  labs(title = "Fitted Normal Distributions of Pedestrian Counts",
+       x = "Pedestrian count per hour",
+       y = "Density") +
+  theme_minimal()
+
+# Your 95 % CI for (Flinders − Southern Cross)
+ci_lower <- -88.59
+ci_upper <- -8.92
+mean_diff <- (ci_lower + ci_upper) / 2
+
+ci_df <- tibble(
+  comparison = "Flinders − Southern Cross",
+  mean_diff = mean_diff,
+  lwr = ci_lower,
+  upr = ci_upper
+)
+
+ggplot(ci_df, aes(x = comparison, y = mean_diff)) +
+  geom_point(size = 4, colour = "blue") +
+  geom_errorbar(aes(ymin = lwr, ymax = upr), width = 0.15, colour = "blue") +
+  geom_hline(yintercept = 0, linetype = 2, colour = "black") +
+  geom_hline(yintercept =  80, linetype = 3, colour = "red") +
+  geom_hline(yintercept = -80, linetype = 3, colour = "red") +
+  labs(
+    title = "95% Confidence Interval for Mean Difference",
+    x = NULL,
+    y = "Mean difference (Flinders − Southern Cross)"
+  ) +
+  theme_minimal()
+
+ci_res <- t.test(flinders, southern, conf.level = 0.95)
+
+#ci_res$estimate
+ci_res$conf.int
+# ^^ 95% confident that we the mean difference lies between -88.58 and -8.91 -> does not lie within the tolerance
 ```
 
 ### Statistical Methods
