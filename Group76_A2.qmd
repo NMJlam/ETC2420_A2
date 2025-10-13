@@ -980,6 +980,10 @@ The bootstrap analysis provides similar estimates, confirming the robustness of 
 
 Both methods produce very similar point estimates and interval widths, which provides confidence in the estimates. The slight differences arise from the different theoretical frameworks (Bayesian vs. frequentist) and the random nature of bootstrap resampling.
 
+#### Justification for Comparing Two Methods
+
+Because the task notes there’s “more than one way of doing this,” we report results from two taught methods to check robustness. The Bayesian Beta–Binomial approach (Weeks 7–8) treats each day as a yes/no outcome, uses a simple prior from the notes, and returns a clear uncertainty range for the exceedance rate that we then convert directly to revenue. The frequentist bootstrap (Week 5) stays fully data-driven by repeatedly resampling the daily outcomes to build an empirical uncertainty range, which we also map to revenue. Both methods rely on the same course assumptions (independent days with a stable exceedance rate at each location) and produce very similar rankings and ranges, so our recommendation does not depend on the modelling framework. Using both therefore strengthens confidence in the final billboard choice.
+
 ### Interpretation
 
 **Understanding the Revenue Formula**: The bank's payment structure consists of a guaranteed base payment of \$10,000 plus a performance-based bonus. The bonus equals \$5,000 multiplied by θ, the proportion of days exceeding 1,000 pedestrians per hour. Therefore, a location where pedestrian counts exceed the threshold 40% of days (θ = 0.40) would generate expected revenue of \$10,000 + \$5,000 × 0.40 = \$12,000.
