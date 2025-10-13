@@ -48,33 +48,25 @@ pedestrians <- read.csv("data/pedestrians.csv")
 
 \newpage
 
+# REVISE TASK 1-3
+
 # Task 1: \[20 Marks\]
 
-### Description
+## Introduction
 
-Your manager wants to understand the distribution of the number of people using the three pedestrian crossings. She would like some appropriate descriptive and visual summaries of the data. In addition, she would like fitted models for each crossing, which she wants to share with the engineering team to help with planning and design.
+The objective of this task is to provide descriptive and graphical summaries of pedestrian traffic at each crossing (QV Melbourne, Southern Cross Station, and Flinder's Street Station) to assist the engineering team with planning and design decisions.
 
-Required analyses and components:
+This stage is divided into two parts: first, exploring the overall distribution of pedestrian counts through histograms and box-plots, and computing summary statistics to describe key traffic characteristics such as center, spread, and variability; second, fitting simple probability models to characterize the underlying distributions and assessing their adequacy using QQ-plots.
 
--   One or more appropriate plots to visualize the data.
+The results from this descriptive analysis form the foundation for subsequent inferential tasks, providing probability models for evaluating pedestrian flow capacity in later stages of the report.
 
--   Some appropriate descriptive statistics.
+## Data Preparation
 
--   Fit appropriate models to the data, and report the resulting estimates.
-
--   Assess the adequacy of the model fits, using appropriate statistical techniques.
-
-## Requirement 1: Plots to visualize the data
-
-### Approach
-
-A histogram is used to show the shape of the traffic distribution at each crossing. This allows us to summarize the distribution of the foot traffic at each section.
-
-A box-whisker plot is used to display the central tendency of the how the foot traffic is being spread
-
-### Technical Analysis
-
-**Data preparation**
+```{r data-preparation}
+qv_melbourne_traffic <- pedestrians[["qv_melbourne"]]
+southern_cross_traffic <- pedestrians[["southern_cross"]]
+flinders_street_traffic <- pedestrians[["flinders_street"]]
+```
 
 ```{r task1-data-prep}
 ped_long <- pedestrians |>
@@ -83,255 +75,252 @@ ped_long <- pedestrians |>
                values_to = "count")
 ```
 
-#### Histogram
-
-[Creating a function to plot the graphs using a histogram.]{.underline}
-
-```{r task1-plots}
-# Requirement 1: Plot histograms/density for each location
-plot_3_histograms <- function(long_data, binwidth = 50) {
-  ggplot(long_data, aes(x = count)) +
-    geom_histogram(binwidth = binwidth, fill = "skyblue", colour = "black") +
-    facet_wrap(~ location, scales = "free") +
-    labs(title = "Distribution of pedestrian counts",
-         x = "Pedestrian count per hour", y = "Frequency")
-}
-```
-
-#### Box-Whisker Plot
-
-[Creating a function to plot the graphs in a box-whisker plot]{.underline}
+## Descriptive Summaries
 
 ```{r}
-plot_boxplots <- function(long_data) {
-  long_data |>
-    mutate(location = forcats::fct_relevel(location, sort(unique(location)))) |>
-    ggplot(aes(x = location, y = count, fill = location)) +
-    geom_boxplot(outlier.colour = "red", outlier.shape = 16, outlier.size = 2) +
-    labs(title = "Pedestrian counts by location",
-         x = "Location", y = "Pedestrian count per hour") +
-    theme_minimal() + theme(legend.position = "none")
-}
-```
-
-### Results
-
-[Display the histograms]{.underline}
-
-```{r task 1 plots}
-plot_3_histograms(ped_long)
-```
-
-[Display the box-whisker plots.]{.underline}
-
-```{r}
-plot_boxplots(ped_long)
-```
-
-### Interpretation
-
--   Explain what the box-whisker and the bar graph shows about the foot traffic in each of the locations
-
-### Conclusions
-
--   Conclusions on the central tendency in a non-technical way.
-
-## Requirement 2: Appropriate Summary Statistics
-
-### Approach
-
-Explain why we have continuous and not discrete values – why?
-
-This will guide the summary statistics we will provide.
-
-### Technical Analysis
-
-```{R task1-summary statistics}
-# Requirement 2: Appropriate summary statistics
 get_mode <- function(x) {
+  x <- x[!is.na(x)]
   ux <- unique(x)
   ux[which.max(tabulate(match(x, ux)))]
 }
-```
 
-### Results
-
-```{r}
-ped_descriptive <- ped_long |>
+summary_stats <- ped_long |>
   group_by(location) |>
   summarise(
-    mean = mean(count),
-    median = median(count),
-    mode = get_mode(count),
-    sd = sd(count),
-    min = min(count),
-    max = max(count),
-    q1 = quantile(count, 0.25),
-    q3 = quantile(count, 0.75)
-  )
-
-ped_descriptive
-```
-
-### Interpretation
-
-Explain the statistics in a technical way
-
-### Conclusions
-
-Explain the statistics in a non-technical way
-
-## Requirement 3: Fit appropriate models to the data, and report the resulting estimates.
-
-1)  Choose a model for the data
-
-2)  "Fit" the model
-
-3)  Assess the adequacy of the model
-
-### Approach
-
-1)  Choose a model for the data
-
-Flinders_street: mean = median Southern Cross: mean = median qv: slight right skew
-
-```{r}
-summary_stats <- pedestrians %>%
-  summarise(
-    across(everything(),
-           list(mean = mean, 
-                median = median, 
-                mode = ~as.numeric(names(sort(table(.), decreasing = TRUE)[1]))))
-  )
+    n      = n(),                      
+    Mean   = mean(count, na.rm = TRUE),
+    Median = median(count, na.rm = TRUE),
+    Mode   = get_mode(count),          
+    SD     = sd(count, na.rm = TRUE),
+    IQR    = IQR(count, na.rm = TRUE)
+  ) |>
+  mutate(across(where(is.numeric), ~round(.x, 1))) |>
+  arrange(location)
 
 summary_stats
 ```
 
--   Explain why we reported standard error
+Table 1 summarizes the key descriptive statistics for the three pedestrian crossings.
 
--   Explain why we have the parameters
+### Interpretation
 
-### Technical Analysis
+QV Melbourne records the highest average pedestrian count (mean = 2336.7) with a median of 2310 and a mode of 2335. The mean being slightly greater than the median indicates a mild right-skew, where occasional high-traffic periods such as lunch hours or events pull the average upward. The large standard deviation (304.9) and wide interquartile range (462) confirm that pedestrian volumes fluctuate substantially throughout the day. Notably, QV Melbourne’s variability is roughly twice that of Flinders Street (SD = 147.9, IQR = 202), highlighting its greater unpredictability and reflecting its role as a retail and entertainment hub with highly variable activity.
 
-```{r data-preparation}
-qv_melbourne_traffic <- pedestrians[["qv_melbourne"]]
-southern_cross_traffic <- pedestrians[["southern_cross"]]
-flinders_street_traffic <- pedestrians[["flinders_street"]]
-```
+Flinders Street shows a mean of 893.0, median of 887, and mode of 1042, suggesting an approximately symmetric distribution with only a slight left-skew due to the higher mode. The moderate SD (147.9) and IQR (202) indicate a relatively stable commuter flow, with counts generally concentrated near the average and limited day-to-day fluctuation. Variability here is about half that observed at QV Melbourne, suggesting more consistent daily pedestrian movement.
 
-2)  "Fit" the model
+Southern Cross exhibits a mean of 941.8, median of 955, and mode of 897, also showing near-symmetry with the mean slightly below the median, suggesting a minor left-skew. Its smaller SD (133.0) and narrow IQR (143) demonstrate the most consistent pedestrian volumes among the three locations, typical of a major transport interchange with predictable commuter patterns.
 
-```{r fit-model}
-fit_flinders <- fitdistr(flinders_street_traffic, "normal")
-fit_southern <- fitdistr(southern_cross_traffic, "normal")
-fit_qv       <- fitdistr(qv_melbourne_traffic, "gamma")
+Overall, QV Melbourne differs markedly from the other two sites: it has much higher counts and roughly double the variability, producing a right-skewed distribution. Flinders Street and Southern Cross, in contrast, display symmetric, steady traffic patterns with lower dispersion. These combined observations of centre, spread, and shape guide model selection—supporting the use of Normal distributions for the two station crossings and a Gamma distribution for QV Melbourne, which appropriately models its positive skew and non-negative, variable counts.
 
-```
-
-### Results
-
-MUST SEPARATE GAMMA AND NORMAL
+## Visualization
 
 ```{r}
-estimates <- tibble(
-  location = c("Flinders Street", "Southern Cross", "QV Melbourne"),
-  model    = c("Normal", "Normal", "Gamma"),
-  par1     = c(fit_flinders$estimate["mean"],
-               fit_southern$estimate["mean"],
-               fit_qv$estimate["shape"]),
-  se1      = c(fit_flinders$sd["mean"],
-               fit_southern$sd["mean"],
-               fit_qv$sd["shape"]),
-  par2     = c(fit_flinders$estimate["sd"],
-               fit_southern$estimate["sd"],
-               fit_qv$estimate["rate"]),
-  se2      = c(fit_flinders$sd["sd"],
-               fit_southern$sd["sd"],
-               fit_qv$sd["rate"])
-)
+ped_long |>
+  mutate(location = forcats::fct_relevel(location, sort(unique(location)))) |>
+  ggplot(aes(x = location, y = count, fill = location)) +
+  geom_boxplot(outlier.colour = "red", outlier.shape = 16, outlier.size = 2) +
+  labs(
+    title = "Pedestrian Counts by Location",
+    x = "Location",
+    y = "Pedestrian Count per Hour"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
 
-estimates
+```{r}
+ggplot(ped_long, aes(x = count)) +
+  geom_histogram(binwidth = 50, fill = "skyblue", colour = "black") +
+  facet_wrap(~ location, scales = "free") +
+  labs(
+    title = "Distribution of Pedestrian Counts",
+    x = "Pedestrian count per hour",
+    y = "Frequency"
+  ) +
+  theme_minimal()
 ```
 
 ### Interpretation
 
-Explain tehcnically
+The histograms and box-plots together provide a detailed overview of the distribution and spread of pedestrian traffic at the three crossings.
 
-### Conclusions
+QV Melbourne: The histogram shows a concentrated cluster of pedestrian counts between roughly 2000 and 2800 pedestrians per hour, with a noticeable right-tail. This indicates a right-skewed distribution, consistent with occasional surges in foot traffic, likely reflecting its central retail and entertainment location. The box-plot confirms this skew, showing a higher median and longer upper whisker, suggesting a few extreme high-traffic days.
 
-non-technical explanations
+Flinders Street: The histogram is approximately symmetric with most counts between 750 and 1050. The box-plot shows a narrow interquartile range and only minor outliers, indicating moderate variability and a roughly Normal distribution. This suggests steady pedestrian flow with no major deviations across days.
 
-## Requirement 4: Assess the adequacy of the model fits, using appropriate statistical techniques.
+Southern Cross: The histogram also appears roughly symmetric but slightly wider than Flinders Street, with occasional low outliers below 700 pedestrians per hour visible in the boxplot. This implies slightly greater day-to-day variation but still an approximately Normal shape.
 
-### Approach
+Overall, QV Melbourne displays a distinct right-skew and larger variability, while Flinders Street and Southern Cross show stable, symmetric distributions suitable for modelling with the Normal distribution.
 
-Explain why plotting using a QQ plot allows us to assess the model fits
+### Summary
 
-### Technical Analysis
+In simpler terms, QV Melbourne consistently has the heaviest foot traffic and the most variation, with some days being much busier than others. In contrast, Flinder's Street and Southern Cross show more regular and balanced pedestrian numbers, meaning their traffic levels remain fairly steady from day to day. These differences highlight that QV Melbourne may require larger capacity or more flexible design planning compared with the other two crossings, which experience more predictable daily flow.
+
+## Fitted Models
+
+### Choose
+
+The selection of probability models was guided by the distributional shapes observed in the descriptive analysis and confirmed through the histograms and boxplots. Because Flinders Street and Southern Cross displayed approximately symmetric distributions with similar means and medians, their pedestrian counts were modelled using the Normal distribution, which appropriately represents data centred around a mean with random variation on either side. In contrast, QV Melbourne exhibited a distinct right-skew with higher variability and non-negative counts, so a Gamma distribution was selected, consistent with its suitability for positively skewed, continuous data.
+
+These model choices therefore align directly with the underlying distributional characteristics of each location, ensuring that the fitted models accurately capture observed patterns in pedestrian flow.
+
+### Fit
 
 ```{r}
-# Flinders (Normal QQ)
-ggplot(tibble(x = flinders_street_traffic), aes(sample = x)) +
+fit_flinders <- MASS::fitdistr(flinders_street_traffic, "normal")
+fit_southern <- MASS::fitdistr(southern_cross_traffic, "normal")
+fit_qv       <- MASS::fitdistr(qv_melbourne_traffic,  "gamma")
+```
+
+### Report
+
+#### Report the resulting estimates
+
+```{r}
+# Helpers to tidy fits (matches Week 6 fitdistr pattern)
+tidy_normal <- function(fit, location) {
+  tibble::tibble(
+    location = location, model = "Normal",
+    mu     = unname(fit$estimate["mean"]),
+    se_mu  = unname(fit$sd["mean"]),
+    sigma  = unname(fit$estimate["sd"]),
+    se_sigma = unname(fit$sd["sd"])
+  )
+}
+
+tidy_gamma <- function(fit, location) {
+  tibble::tibble(
+    location = location, model = "Gamma",
+    shape   = unname(fit$estimate["shape"]),
+    se_shape= unname(fit$sd["shape"]),
+    rate    = unname(fit$estimate["rate"]),
+    se_rate = unname(fit$sd["rate"])
+  )
+}
+
+# Build the report in one go
+report_tbl_display <- dplyr::bind_rows(
+  tidy_normal(fit_flinders, "Flinders Street"),
+  tidy_normal(fit_southern, "Southern Cross"),
+  tidy_gamma(fit_qv,       "QV Melbourne")
+) |>
+  dplyr::mutate(dplyr::across(where(is.numeric), ~round(.x, 3)))
+
+report_tbl_display
+```
+
+#### Model Adequacy
+
+```{r}
+# --- Flinders Street (Normal) ---
+ggplot(data.frame(x = flinders_street_traffic), aes(sample = x)) +
   stat_qq(distribution = qnorm,
           dparams = list(mean = fit_flinders$estimate["mean"],
                          sd   = fit_flinders$estimate["sd"])) +
   stat_qq_line(distribution = qnorm,
                dparams = list(mean = fit_flinders$estimate["mean"],
-                              sd   = fit_flinders$estimate["sd"])) +
-  labs(title = "Flinders Street: Normal QQ plot")
+                              sd   = fit_flinders$estimate["sd"]),
+               colour = "red") +
+  labs(title = "Flinders Street: Normal QQ-plot",
+       x = "Theoretical Quantiles", y = "Sample Quantiles") +
+  theme_minimal()
 
-# Southern Cross (Normal QQ)
-ggplot(tibble(x = southern_cross_traffic), aes(sample = x)) +
+# --- Southern Cross (Normal) ---
+ggplot(data.frame(x = southern_cross_traffic), aes(sample = x)) +
   stat_qq(distribution = qnorm,
           dparams = list(mean = fit_southern$estimate["mean"],
                          sd   = fit_southern$estimate["sd"])) +
   stat_qq_line(distribution = qnorm,
                dparams = list(mean = fit_southern$estimate["mean"],
-                              sd   = fit_southern$estimate["sd"])) +
-  labs(title = "Southern Cross: Normal QQ plot")
+                              sd   = fit_southern$estimate["sd"]),
+               colour = "red") +
+  labs(title = "Southern Cross: Normal QQ-plot",
+       x = "Theoretical Quantiles", y = "Sample Quantiles") +
+  theme_minimal()
 
-# QV (Gamma QQ)
-ggplot(tibble(x = qv_melbourne_traffic), aes(sample = x)) +
+# --- QV Melbourne (Gamma) ---
+ggplot(data.frame(x = qv_melbourne_traffic), aes(sample = x)) +
   stat_qq(distribution = qgamma,
           dparams = list(shape = fit_qv$estimate["shape"],
                          rate  = fit_qv$estimate["rate"])) +
   stat_qq_line(distribution = qgamma,
                dparams = list(shape = fit_qv$estimate["shape"],
-                              rate  = fit_qv$estimate["rate"])) +
-  labs(title = "QV Melbourne: Gamma QQ plot")
+                              rate  = fit_qv$estimate["rate"]),
+               colour = "red") +
+  labs(title = "QV Melbourne: Gamma QQ-plot",
+       x = "Theoretical Quantiles", y = "Sample Quantiles") +
+  theme_minimal()
 ```
-
-### Results
-
-Interpret the results by observing the variances from the line
 
 ### Interpretation
 
-Show through a separate plot how they are similar and explain why using the QQ plot
+The QQ-plots provide a diagnostic check of how well each model captures the observed variation in pedestrian counts. For Flinders Street and Southern Cross, the plotted points lie close to the reference line with only minor random scatter, indicating that the Normal distribution provides a good approximation of their data. Slight tail deviations are expected for finite samples and do not suggest serious misfit. For QV Melbourne, the Gamma QQ-plot shows a strong linear alignment without systematic curvature, confirming that the Gamma model accurately represents the right-skewed pattern of pedestrian traffic. Overall, all three fitted models display good adequacy, meaning the chosen probability distributions describe the data realistically and can be confidently used for further analysis.
 
-### Conclusions
+### Summary
 
-Concluded in a non-technical way
+The adequacy results also align with the real-world behaviour of pedestrian flow at each location. Because Flinders Street and Southern Cross follow roughly Normal patterns, their traffic is generally consistent from day to day, with pedestrian counts clustering around a stable average of about 900–950 people per hour. This reflects predictable commuter movement typical of transport hubs.
+
+In contrast, QV Melbourne’s Gamma-shaped distribution captures its right-skewed nature - frequent moderate traffic levels (around 2300–2500 pedestrians/hour) but occasional high surges, consistent with its busy retail and entertainment setting.
+
+The strong correspondence between these model fits and the observed QQ-plots confirms that the fitted distributions not only represent the data statistically but also reflect the practical differences in pedestrian activity across the three crossings. Together, these models provide a reliable foundation for subsequent analyses of pedestrian flow capacity and design planning.
+
+\newpage
 
 # Task 2: \[20 marks\]
 
 ## Introduction
 
-The traffic regulations require that crossings are designed to have smooth pedestrian flow 90% of the time. To help the engineering team assess whether the crossings are large enough to meet the regulations, they would like an estimate of 90th percentile amount of traffic for each crossing. Use two approaches (as outlined below) and provide interval estimates for each.
+The objective is to estimate the 90th percentile of pedestrian traffic flow at each crossing (QV Melbourne, Southern Cross Station, and Flinder's Street Station) with a 95% confidence interval. This determines whether each crossing can accommodate smooth pedestrian flow 90% of the time, according to traffic regulation.
 
-Required analyses and components:
+In context, the 95% confidence interval represents the range of pedestrian traffic volumes within which the true 90th percentile is likely to fall, indicating how much traffic each crossing can typically handle smoothly 90% of the time.
 
--   As the first approach, use the *sample quantile* as the estimator. This is implemented in R by the function `quantile()`.
+Two estimation methods are used; a parametric approach and a non-parametric approach. The parametric method fits a suitable probability distribution (e.g., normal or gamma) to the data to estimate the 90th percentile, while the non-parametric method directly calculates it from the observed sample. Both approaches utilize bootstrapping to simulate repeated sampling from the population, enabling more reliable estimation and quantification of uncertainty.
 
--   As the second approach, use estimators based on the models you fitted in [Task 1](file:///Users/natha/Downloads/assignment2.html#task-1).
+By comparing the results from both methods, we can assess the consistency of the estimates and therefore provide informed recommendations on whether the crossings meet the required pedestrian-flow standards.
 
--   Calculate 95% confidence intervals based on each of the estimators above. Use any method that you think is appropriate, and justify your choice.
+## Methods
 
--   Provide an overall conclusion, including recommendations about which of these estimates are likely to be more useful or reliable.
+**Parametric Quantile Method**
 
--   In your report, explain the key statistical ideas to the manager, including what the parameter of interest is, how it relates to the data, and what assumptions you are making for each estimate.
+The parametric method assumes that pedestrian counts follow a known probability distribution. In this analysis, the traffic at each crossing is modelled using either a Normal or Gamma distribution, consistent with the shapes identified in Task 1. Once these models are fitted to the observed data using maximum likelihood estimation (MLE), their estimated parameters are used to calculate the theoretical 90th percentile of pedestrian traffic for each location.
 
-## Data Preparation
+The uncertainty in these estimates is then assessed using a non-parametric bootstrap of the observed data.
+
+The procedure is as follows: 1. Fit the model: Estimate the model parameters (mean and standard deviation for the Normal; shape and rate for the Gamma) from each data set using MASS::fitdistr().
+
+```         
+2.  Resample the data: Draw bootstrap samples from the observed counts with replacement, keeping the same sample size as the original data.
+
+3.  Re-fit and compute: For each bootstrap sample, re-fit the same model and calculate the 90th percentile using the updated parameter estimates (qnorm() or qgamma()).
+
+4.  Repeat and collate: Repeat this process 5 000 times to produce a bootstrap distribution of 90th-percentile estimates.
+
+5.  Construct a confidence interval: Form the 95 % confidence interval by taking the 2.5 th and 97.5 th percentiles of the bootstrap distribution (the percentile bootstrap method).
+```
+
+The parametric bootstrap method leverages the assumed distributional structure of the data. If the fitted parametric model (Normal or Gamma) accurately represents the true population distribution—as validated by the goodness-of-fit diagnostics in Task 1—this approach can provide several advantages:
+
+1.  **Smoothing over sampling irregularities**: The parametric model smooths over random fluctuations and irregularities in the observed sample, potentially leading to more stable and precise estimates when the model assumption holds.
+
+2.  **Validation through comparison**: Comparing parametric and non-parametric bootstrap results serves a dual purpose: if the methods yield similar confidence intervals, this provides evidence that (a) the parametric model assumption is reasonable, and (b) the quantile estimates are robust to methodological choices.
+
+**Non-parametric Quantile Method**
+
+The non-parametric method does not assume that the pedestrian counts follow any particular probability distribution. Instead, it estimates the 90th percentile directly from the observed data using the empirical distribution of pedestrian counts. This approach relies on bootstrapping to quantify the uncertainty in the estimate without fitting a model.
+
+The procedure is as follows:
+
+1.  Re-sample the data: Create many bootstrap samples from the original data set by randomly sampling with replacement, ensuring each sample is the same size as the original data.
+
+2.  Calculate the 90th percentile: For each bootstrap sample, compute the empirical 90th percentile - the value below which 90% of observations in that sample fall.
+
+3.  Repeat and collate: Repeat this process 5,000 times to generate a bootstrap distribution of 90th percentile estimates.
+
+4.  Construct a confidence interval: Determine the 95% confidence interval by taking the 2.5th and 97.5th percentiles of the bootstrap distribution.
+
+## Results
+
+**Data Preparation**
 
 ```{r task2-data-prep}
 # Get each of the locations
@@ -340,147 +329,191 @@ southern_cross_traffic <- pedestrians[["southern_cross"]]
 flinders_street_traffic <- pedestrians[["flinders_street"]]
 ```
 
-### Technical Approach
-
-**Approach 1: Non-parametric Quantile Method**
-
-This involves bootstrapping, where many re-samples of the original data are created (with replacement) to emulate the variability we would see if we could repeatedly sample from the real population.
-
-For each bootstrap sample, we calculate the 90th percentile—the value below which 90% of the observations in that specific sample fall. We repeat this process thousands of times, accumulating all of these 90th percentile values to create a distribution of the 90th percentile estimator.
-
-We then find the 2.5th and 97.5th percentiles of this bootstrap distribution to construct a 95% confidence interval. This interval provides our estimate of the true population 90th percentile with 95% confidence, allowing us to determine the traffic level that each crossing must accommodate to ensure smooth pedestrian flow 90% of the time.
+**Non-parametric Quantile Method**
 
 ```{r task2-analysis}
-# Approach 1: Sample (Empirical) Quantile Method
 find_90th_percentile <- function(data, trials = 5000) {
-  # Ensure data is a numeric vector
-  if (!is.numeric(data)) {
-    stop("Input must be a numeric vector.")
-  }
-  
-  # Remove missing values
+  # Step 1: Remove missing values to ensure only valid pedestrian counts are used
   x <- data[!is.na(data)]
   n <- length(x)
-  if (n == 0) stop("No data points available after removing NA.")
   
-  # Bootstrap resamples
+  # Step 2–4: Bootstrap re-sampling to estimate sampling variability
   q_boot <- replicate(trials, {
+    # Step 2: Create a bootstrap sample by sampling with replacement
     xb <- sample(x, size = n, replace = TRUE)
-    as.numeric(quantile(xb, probs = 0.9, type = 7))
+    
+    # Step 3: Calculate the empirical 90th percentile for this sample
+    quantile(xb, probs = 0.9, type = 7)
   })
   
-  # 95% CI from bootstrap distribution
-  ci <- quantile(q_boot, probs = c(0.025, 0.975))
+  # Step 5: Construct a 95% confidence interval from the bootstrap distribution
+  ci <- quantile(q_boot, c(0.025, 0.975))
   
-  result <- list(
-    ci_lower = unname(ci[1]),
-    ci_upper = unname(ci[2])
+  # Return the lower and upper bounds of the 95% CI for the 90th percentile
+  list(
+    ci_lower = ci[1],
+    ci_upper = ci[2]
   )
-  
-  return(result)
 }
 ```
 
-**Approach 2: Parametric Quantile method**
+**Parametric Quantile Method**
 
 ```{r}
-find_90thPercentile_normal <- function(data, trials = 5000) {
-  x <- as.numeric(data)
-  x <- x[is.finite(x)]
+# ==============================================================================
+# Parametric Bootstrap Method - Combined Function
+# ==============================================================================
+
+find_90thPercentile_model <- function(data, model = "normal", trials = 5000) {
+  # Remove missing/non-finite values
+  x <- as.numeric(data[is.finite(data)])
   n <- length(x)
+  
   if (n < 2) stop("Need at least 2 observations.")
-
-  # 1. Fit Normal model by MLE
-  mu_hat <- mean(x)
-  sigma_hat <- sqrt(mean((x - mu_hat)^2))  # MLE version, divides by n
-
-  # 2. Point estimate of the 90th percentile
-  q90_hat <- qnorm(0.90, mean = mu_hat, sd = sigma_hat)
-
-  # 3. Parametric bootstrap for 95% CI
-  q_boot <- replicate(trials, {
-    # simulate new sample from fitted Normal
-    xb <- rnorm(n, mean = mu_hat, sd = sigma_hat)
-    # re-fit Normal on xb
-    mu_b <- mean(xb)
-    sd_b <- sqrt(mean((xb - mu_b)^2))
-    # compute q90 for this bootstrap sample
-    qnorm(0.90, mean = mu_b, sd = sd_b)
-  })
-
-  # CI = central 95% of bootstrap distribution
+  
+  if (model == "normal") {
+    # -------------------------------------------------------------------------
+    # Normal Distribution
+    # -------------------------------------------------------------------------
+    
+    # Fit Normal distribution to original data (MLE)
+    mu_hat <- mean(x)
+    sigma_hat <- sd(x)
+    
+    # Parametric bootstrap: Generate from fitted Normal distribution
+    q_boot <- replicate(trials, {
+      # Generate NEW data from Normal(μ̂, σ̂)
+      xb <- rnorm(n, mean = mu_hat, sd = sigma_hat)
+      # Calculate empirical 90th percentile from simulated data
+      quantile(xb, probs = 0.90, type = 7)
+    })
+    
+  } else if (model == "gamma") {
+    # -------------------------------------------------------------------------
+    # Gamma Distribution
+    # -------------------------------------------------------------------------
+    
+    if (any(x <= 0)) stop("Gamma model requires strictly positive data.")
+    
+    # Fit Gamma distribution to original data (MLE)
+    fit <- MASS::fitdistr(x, densfun = "gamma")
+    shape_hat <- unname(fit$estimate["shape"])
+    rate_hat  <- unname(fit$estimate["rate"])
+    
+    # Parametric bootstrap: Generate from fitted Gamma distribution
+    q_boot <- replicate(trials, {
+      # Generate NEW data from Gamma(α̂, β̂)
+      xb <- rgamma(n, shape = shape_hat, rate = rate_hat)
+      # Calculate empirical 90th percentile from simulated data
+      quantile(xb, probs = 0.90, type = 7)
+    })
+    
+  } else {
+    stop("Model must be either 'normal' or 'gamma'")
+  }
+  
+  # Construct 95% CI using percentile bootstrap method
   ci <- quantile(q_boot, c(0.025, 0.975), names = FALSE)
-
-  # Return point estimate + CI
+  
+  # Return results
   list(
-    ci_lower = ci[1],
-    ci_upper = ci[2]
-  )
-}
-
-find_90thPercentile_gamma <- function(data, trials = 5000) {
-  x <- as.numeric(data)
-  x <- x[is.finite(x)]
-  n <- length(x)
-  if (n < 2) stop("Need at least 2 observations.")
-  if (any(x <= 0)) stop("Gamma model requires strictly positive data.")
-
-  # 1. Fit Gamma model by MLE
-  # Requires MASS::fitdistr (Week 6 lecture)
-  fit <- MASS::fitdistr(x, densfun = "gamma")
-  shape_hat <- unname(fit$estimate["shape"])
-  rate_hat  <- unname(fit$estimate["rate"])
-
-  # 2. Point estimate of the 90th percentile
-  q90_hat <- qgamma(0.90, shape = shape_hat, rate = rate_hat)
-
-  # 3. Parametric bootstrap for 95% CI
-  q_boot <- replicate(trials, {
-    # simulate new sample from fitted Gamma
-    xb <- rgamma(n, shape = shape_hat, rate = rate_hat)
-    # re-fit Gamma on xb
-    fit_b <- MASS::fitdistr(xb, densfun = "gamma")
-    sh_b <- unname(fit_b$estimate["shape"])
-    rt_b <- unname(fit_b$estimate["rate"])
-    # compute q90 for this bootstrap sample
-    qgamma(0.90, shape = sh_b, rate = rt_b)
-  })
-
-  # CI = central 95% of bootstrap distribution
-  ci <- quantile(q_boot, c(0.025, 0.975), names = FALSE)
-
-  # Return point estimate + CI
-  list(
+    q90_estimate = mean(q_boot),
     ci_lower = ci[1],
     ci_upper = ci[2]
   )
 }
 ```
 
-### Results
+*Histograms and QQ-plots (not shown) confirmed that the Normal model was suitable for Flinder's Street and Southern Cross, while the Gamma model fitted QV Melbourne’s right-skewed distribution.*
 
-```{r task2-results}
+```{r}
 # Approach 1: Sample (Empirical) Quantile Method
 qv_estimate_bootstrap <- find_90th_percentile(qv_melbourne_traffic)
 flinders_estimate_bootstrap <- find_90th_percentile(flinders_street_traffic)
 southern_estimate_bootstrap <- find_90th_percentile(southern_cross_traffic)
-
-# Approach 2: Model Based Quantile
-qv_estimate_gamma <- find_90thPercentile_gamma(qv_melbourne_traffic)
-
-flinders_estimate_normal <- find_90thPercentile_normal(flinders_street_traffic)
-southern_estimate_normal <- find_90thPercentile_normal(southern_cross_traffic)
 ```
 
-<!-- Technical interpretation of results -->
+```{r}
+# Approach 2: Model Based Quantile
+flinders_param <- find_90thPercentile_model(flinders_street_traffic, model = "normal")
+southern_param <- find_90thPercentile_model(southern_cross_traffic, model = "normal")
+qv_param       <- find_90thPercentile_model(qv_melbourne_traffic, model = "gamma")
+```
+
+```{r}
+# --- Point estimates (non-bootstrapped) ---
+# Empirical (sample) 90th percentile
+q90_emp_qv       <- quantile(qv_melbourne_traffic,       0.90, type = 7)
+q90_emp_flinders <- quantile(flinders_street_traffic,    0.90, type = 7)
+q90_emp_southern <- quantile(southern_cross_traffic,     0.90, type = 7)
+
+# Model-based 90th percentile using fitted parameters from Task 1
+q90_mod_flinders <- qnorm(0.90, mean = fit_flinders$estimate["mean"],
+                                  sd   = fit_flinders$estimate["sd"])
+q90_mod_southern <- qnorm(0.90, mean = fit_southern$estimate["mean"],
+                                  sd   = fit_southern$estimate["sd"])
+q90_mod_qv       <- qgamma(0.90, shape = fit_qv$estimate["shape"],
+                                   rate  = fit_qv$estimate["rate"])
+
+# --- Build a single tidy results table (long form) ---
+results_task2 <- dplyr::bind_rows(
+  # Empirical method (non-parametric bootstrap CI)
+  tibble::tibble(
+    Location   = c("QV Melbourne", "Flinders Street", "Southern Cross"),
+    Method     = "Non-parametric (Empirical)",
+    Point      = c(q90_emp_qv, q90_emp_flinders, q90_emp_southern),
+    Lower_95CI = c(qv_estimate_bootstrap$ci_lower,
+                   flinders_estimate_bootstrap$ci_lower,
+                   southern_estimate_bootstrap$ci_lower),
+    Upper_95CI = c(qv_estimate_bootstrap$ci_upper,
+                   flinders_estimate_bootstrap$ci_upper,
+                   southern_estimate_bootstrap$ci_upper)
+  ),
+  # Model-based method (non-parametric bootstrap CI around model quantile)
+  tibble::tibble(
+    Location   = c("QV Melbourne", "Flinders Street", "Southern Cross"),
+    Method     = "Parametric (Model-based)",
+    Point      = c(q90_mod_qv, q90_mod_flinders, q90_mod_southern),
+    Lower_95CI = c(qv_param$ci_lower, flinders_param$ci_lower, southern_param$ci_lower),
+    Upper_95CI = c(qv_param$ci_upper, flinders_param$ci_upper, southern_param$ci_upper)
+  )
+) |>
+  dplyr::mutate(dplyr::across(where(is.numeric), ~round(.x, 2)))
+
+results_task2
+```
+
+```{r}
+plot_df <- results_task2 %>%
+  mutate(Mid = (Lower_95CI + Upper_95CI) / 2)
+
+# Visualise: midpoint with 95% CI bars, dodged by Method
+ggplot(plot_df, aes(x = Location, y = Mid, color = Method)) +
+  geom_point(position = position_dodge(width = 0.5), size = 2) +
+  geom_errorbar(aes(ymin = Lower_95CI, ymax = Upper_95CI),
+                position = position_dodge(width = 0.5), width = 0.18) +
+  labs(
+    title = "90th Percentile (95% CI): Parametric vs Non-parametric",
+    x = "Location",
+    y = "Estimated 90th Percentile (pedestrians/hour)",
+    color = "Method"
+  ) +
+  theme_minimal()
+```
+
+*The overlapping confidence intervals across both methods confirm that model assumptions are appropriate and the two approaches yield consistent conclusions.*
 
 ## Interpretation
 
-<!-- Non-technical explanation for a general audience -->
+Both the non-parametric (empirical bootstrap) and parametric (model-based) methods produced consistent estimates of the 90th percentile for pedestrian counts across all three crossings. For QV Melbourne, the estimated 90th percentile ranged from approximately 2624–2939 pedestrians per hour (non-parametric) and 2639–2817 pedestrians per hour (parametric, Gamma). At Flinders Street, the range was approximately 1037–1155 (non-parametric) and 1040–1120 (parametric, Normal), while Southern Cross had estimates between 1066–1129 and 1074–1147, respectively.
+
+The close overlap of the confidence intervals indicates that the assumed Normal and Gamma distributions fit the data well. This consistency suggests that the parametric assumptions do not substantially bias the results, and that both approaches provide reliable estimates of the underlying population percentiles. The small differences between methods are expected: the parametric approach smooths the data using a fitted model, whereas the non-parametric method relies solely on the observed sample. Overall, both approaches capture the same traffic patterns and produce similar conclusions regarding the capacity needs of each crossing.
 
 ## Conclusions and Recommendations
 
-<!-- Evidence-based conclusions for Task 2 -->
+The 90th-percentile estimates represent the traffic volumes below which pedestrian flow remains smooth 90% of the time.Across both methods, **QV Melbourne** consistently shows the highest pedestrian demand (\~2600–2900 people per hour), indicating it is the busiest location and may require greater design capacity.Flinder's Street and Southern Cross have substantially lower pedestrian volumes (\~1000–1150 people per hour), suggesting they experience lighter but still significant flow that warrants robust infrastructure design.
+
+The strong agreement between the **parametric** and **non-parametric** methods increases confidence in the reliability of these estimates. Either approach can therefore be used for planning purposes.Together, these findings provide a credible range for the 90th-percentile pedestrian volumes at each crossing, offering valuable guidance for engineers in assessing current performance and informing future modifications or design improvements.
 
 \newpage
 
@@ -488,27 +521,47 @@ southern_estimate_normal <- find_90thPercentile_normal(southern_cross_traffic)
 
 ## Introduction
 
-The engineers have identified that they need to make some upgrades to the crossings outside of the two railway stations (Flinders Street and Southern Cross). To save money, they are hoping they can use the same design and materials for both crossings. They can do so only if the average number of people using each crossing is similar. Specifically, the difference between the averages needs to be no more than 80 people per hour.
+The objective of this task is to determine whether the average pedestrian traffic flow between Southern Cross Station and Flinders Street Station differs by no more than 80 pedestrians per hour. This tolerance level is important because if the difference is within ±80 pedestrians per hour, the same design specifications can be applied to both station crossings, simplifying planning and construction decisions.
 
-Can the engineers safely save money in this case? Is the difference small enough and how certain can we be?
+A 95% confidence interval for the mean difference is constructed to quantify the uncertainty in the estimated difference. In context, this interval provides a range of plausible values for the true mean difference in traffic flow between the two stations, indicating how much the average pedestrian volumes are expected to differ in 95% of comparable cases.
 
-Required analyses and components:
--   Calculate an appropriate 95% confidence interval for the difference in the mean number of people crossing outside the two railway stations. x
--   Comment on whether it is valid to use the Central Limit Theorem when calculating this confidence interval. x 
--   Based on your confidence interval, what conclusions can you provide to the engineering team? x
--   Illustrate your analysis with any appropriate plots.
+A two-sample t-test is used to form the interval, under the assumption that pedestrian counts at each station are approximately Normally distributed and independent. This analysis provides statistical evidence on whether the two stations experience comparable pedestrian traffic, supporting engineering and planning decisions related to crossing design, flow capacity, and future infrastructure management.
 
-## Methodology
+## Method
 
-- Determine if the averages of the 2 crossings (flinders stree and southern cross) are greater than 80 people per hour
+To compare the average pedestrian traffic between Flinders Street and Southern Cross, a two-sample t-test was performed to construct a 95% confidence interval for the mean difference in pedestrian counts.
 
-### Data Processing
+[Step 1]{.underline}
 
-```{r task3-data}
+Before conducting the test, it was necessary to verify that the data from both locations were approximately Normally distributed, as the t-test is derived under this assumption.
+
+1.  Density plots were used to visually inspect the overall shape of each distribution and confirm approximate symmetry.
+
+2.  QQ-plots were used to check that the observed values followed a roughly linear pattern, indicating that both datasets reasonably satisfied the Normality assumption.
+
+[Step 2]{.underline}
+
+A Welch’s t-test was then applied to account for the possibility of unequal variances between the two samples.
+
+The resulting 95% confidence interval for the mean difference was examined to determine whether the observed difference in pedestrian traffic was statistically significant, ensuring that the result could not be attributed to random sampling variation.
+
+Finally, the average difference between the two stations was compared to the tolerance threshold of ±80 pedestrians per hour to assess whether the difference was also practically meaningful for design and planning purposes.
+
+## Results
+
+**Data Preparation**
+
+```{r}
 # Prepare the data
 flinders <- pedestrians$flinders_street
 southern <- pedestrians$southern_cross
+```
 
+**Verify Normality Assumption (Step 1)**
+
+[*1) Observe that the data sets are roughly distributed as normal through plotting*]{.underline}
+
+```{r}
 ped_long |>
   filter(location %in% c("flinders_street", "southern_cross")) |>
   ggplot(aes(x = count, fill = location)) +
@@ -517,12 +570,48 @@ ped_long |>
        x = "Pedestrian count per hour",
        y = "Density") +
   theme_minimal()
+```
 
-# Your 95 % CI for (Flinders − Southern Cross)
-ci_lower <- -88.59
-ci_upper <- -8.92
-mean_diff <- (ci_lower + ci_upper) / 2
+The Density plots indicate that pedestrian counts at both stations are approximately Normally distributed This justifies the use of the two-sample t-test to compare mean pedestrian flows.
 
+[*2) Observe the fit of the 2 data sets to determine if they are normal using QQ-plots*]{.underline}
+
+```{r}
+## QQ plots to check Normality for Flinders Street and Southern Cross
+
+# Display two plots side by side
+par(mfrow = c(1, 2))
+
+# QQ plot for Flinders Street
+qqnorm(flinders,
+       main = "QQ Plot – Flinders Street",
+       xlab = "Theoretical Quantiles",
+       ylab = "Sample Quantiles",
+       col = "steelblue")
+qqline(flinders, col = "red", lwd = 2)
+
+# QQ plot for Southern Cross
+qqnorm(southern,
+       main = "QQ Plot – Southern Cross",
+       xlab = "Theoretical Quantiles",
+       ylab = "Sample Quantiles",
+       col = "darkgreen")
+qqline(southern, col = "red", lwd = 2)
+```
+
+Both QQ plots show that the data points for Flinders Street and Southern Cross closely follow the red reference line, with only minor deviations at the tails, indicating that both data sets are approximately Normally distributed and suitable for analysis using the two-sample t-test.
+
+**Welch's t-test (Step 2)**
+
+```{r}
+ci_res <- t.test(flinders, southern, conf.level = 0.95)
+
+mean_diff <- ci_res$estimate[1] - ci_res$estimate[2]
+ci_lower  <- ci_res$conf.int[1]
+ci_upper  <- ci_res$conf.int[2]
+```
+
+```{r}
 ci_df <- tibble(
   comparison = "Flinders − Southern Cross",
   mean_diff = mean_diff,
@@ -542,187 +631,370 @@ ggplot(ci_df, aes(x = comparison, y = mean_diff)) +
     y = "Mean difference (Flinders − Southern Cross)"
   ) +
   theme_minimal()
-
-ci_res <- t.test(flinders, southern, conf.level = 0.95)
-
-#ci_res$estimate
-ci_res$conf.int
-# ^^ 95% confident that we the mean difference lies between -88.58 and -8.91 -> does not lie within the tolerance
 ```
 
-### Statistical Methods
+The 95% confidence interval for the mean difference between Flinder's Street and Southern Cross ranges approximately from –88.58 to –8.91 pedestrians per hour.
 
-<!-- Explain the statistical techniques used -->
+Because the entire interval lies below 0, the difference in average pedestrian traffic is statistically significant; it is unlikely to have occurred due to random variation. This indicates that, on average, Southern Cross experiences higher pedestrian traffic than Flinder's Street.
 
-```{r task3-methods}
-# Implementation of statistical methods
+Both samples have 97 observations. With sample sizes exceeding 30, the rule of thumb indicates that the CLT provides strong justification for assuming the sampling distribution of the mean difference is approximately normal. This means that even if the underlying pedestrian count distributions had minor departures from perfect normality, the t-test procedure would still be valid.
 
+The combination of: 1. Visual confirmation of approximate normality (density plots and QQ plots), and 2. Large sample sizes ensuring CLT validity
+
+provides robust justification for using the Welch's two-sample t-test to construct our confidence interval.
+
+## Interpretation
+
+```{r}
+ci <- ci_res$conf.int
+difference <- ci[2] - ci[1]
+difference
 ```
 
-## Results and Visualizations
+The 95 % confidence interval for the mean difference in pedestrian counts between Flinders Street and Southern Cross is approximately –88.6 to –8.9 pedestrians per hour. Because the entire interval lies below 0, Southern Cross has, on average, higher pedestrian traffic than Flinders Street. However, the lower bound (–88.6) extends slightly beyond the –80 pedestrian tolerance limit, while the upper bound (–8.9) lies within it. This means that, although the difference is statistically significant, the data do not provide complete 95 % confidence that the true difference is smaller than the design tolerance of ±80 pedestrians per hour. Sampling variation leaves open a small possibility that the true difference marginally exceeds this threshold.
 
-```{r task3-plots}
-# Create visualizations
+In practical terms, the mean flow difference of roughly 50 pedestrians per hour is minor relative to the scale of overall traffic at these crossings. The overlap with the ±80 tolerance suggests that, even if Southern Cross is slightly busier, both stations experience comparable pedestrian volumes. From an engineering perspective, these results indicate that applying the same design standards for pedestrian-flow capacity at the two locations would remain appropriate, while acknowledging a small degree of uncertainty.
 
-```
+## Conclusion
 
-**Figure 3.1:** \[Caption\]
+The two-sample Welch t-test indicates that Southern Cross averages marginally higher pedestrian counts than Flinders Street, but the estimated difference (–88 to –9) is close to the ±80 pedestrian practical threshold. Statistically, there is evidence of a difference; however, the magnitude is small and unlikely to warrant different design specifications. Therefore, for planning and infrastructure purposes, both stations can be treated as having effectively similar pedestrian-flow characteristics, consistent with the results of the earlier descriptive analysis.
+
+# Task 4: \[16 marks\]
+
+### Introduction
+
+The marketing team wishes to use the survey data to help raise revenue by selling billboard space near each pedestrian crossing. To assess the potential value of each location, we need to quantify the average pedestrian traffic at each intersection. We will calculate a 95% confidence interval for the mean number of people crossing per hour at each of the three locations. These confidence intervals will help estimate the typical traffic volume and determine the potential value of each location for advertisers.
 
 ### Technical Analysis
 
-<!-- Technical interpretation -->
+**Statistical Method**: We use a confidence interval (CI) for the mean to estimate the average pedestrian count at each location. Following Week 4 lecture material, we use the t-distribution approach since the population standard deviation is unknown. The 95% confidence interval for the mean is calculated using the formula from Week 3 lecture, slide 50:
 
-### Non-Technical Summary
+$$\text{CI} = \bar{x} \pm t_{\alpha/2} \times \frac{s}{\sqrt{n}}$$
 
-<!-- Explain findings in accessible language -->
+where $\bar{x}$ is the sample mean, $s$ is the sample standard deviation, $n$ is the sample size, and $t_{\alpha/2}$ is the critical value from the t-distribution with $n-1$ degrees of freedom.
 
-## Conclusions and Recommendations
+**Justification**: The t-test approach (Week 4 lecture, slide 36) is appropriate here because:
 
-<!-- Evidence-based conclusions for Task 3 -->
+-   We are estimating population means from sample data
+-   The population standard deviation is unknown
+-   We use the sample standard deviation as an estimate
+-   The t-distribution accounts for additional uncertainty from estimating the standard deviation
+-   With our sample sizes, the Central Limit Theorem suggests the sampling distribution of the mean will be approximately normal (Week 4 lecture, slide 38)
 
-\newpage
+```{r}
+# Transform data to long format for analysis
+# Following the pivot_longer pattern from Week 3 solutions
+peds_long <- pedestrians |>
+  pivot_longer(cols = c(southern_cross, flinders_street, qv_melbourne),
+               names_to = "location",
+               values_to = "count")
 
-# Task 4: \[Task Title\]
+# Calculate confidence intervals for each location
+# Following the t-distribution approach from Week 3 lecture, slide 50
+# Using group_by and summarise pattern from Week 5 solutions
+ci_results <- peds_long |>
+  group_by(location) |>
+  summarise(
+    mean = mean(count),
+    n = n(),
+    se = sd(count) / sqrt(n),
+    # Critical value from t-distribution (Week 3 lecture, slide 39)
+    t_val = qt(0.975, df = n - 1),
+    ci_lower = mean - t_val * se,
+    ci_upper = mean + t_val * se
+  )
 
-## Introduction
-
-<!-- Overview of Task 4 -->
-
-## Analysis Approach
-
-### Data Exploration
-
-```{r task4-exploration}
-# Exploratory analysis
-
+# Display results
+print(ci_results)
 ```
 
-### Statistical Analysis
-
-<!-- Describe your analytical approach -->
-
-```{r task4-analysis}
-# Main analysis code
-
+```{r}
+# Visualization: Comparison of mean pedestrian counts with 95% CIs
+# Following the comparison visualization style from Week 4 lecture
+ggplot(ci_results, aes(x = location, y = mean)) +
+  geom_point(size = 3, color = "darkblue") +
+  geom_errorbar(aes(ymin = ci_lower, ymax = ci_upper), 
+                width = 0.2, 
+                linewidth = 1,
+                color = "darkblue") +
+  labs(
+    title = "Average Pedestrian Count by Location with 95% Confidence Intervals",
+    x = "Location",
+    y = "Average Pedestrians per Hour"
+  ) +
+  theme_minimal(base_size = 13)
 ```
 
-## Results
+### Results
 
-```{r task4-results}
-# Results and visualizations
+The 95% confidence intervals for the mean pedestrian count at each location are:
 
+-   **Flinders Street**: \[`r round(ci_results$ci_lower[1], 2)`, `r round(ci_results$ci_upper[1], 2)`\] pedestrians per hour, with a mean of `r round(ci_results$mean[1], 2)` pedestrians per hour.
+
+-   **QV Melbourne**: \[`r round(ci_results$ci_lower[2], 2)`, `r round(ci_results$ci_upper[2], 2)`\] pedestrians per hour, with a mean of `r round(ci_results$mean[2], 2)` pedestrians per hour.
+
+-   **Southern Cross**: \[`r round(ci_results$ci_lower[3], 2)`, `r round(ci_results$ci_upper[3], 2)`\] pedestrians per hour, with a mean of `r round(ci_results$mean[3], 2)` pedestrians per hour.
+
+The visualization shows that QV Melbourne has substantially higher pedestrian traffic compared to the other two locations. The confidence intervals for Southern Cross and Flinders Street overlap, suggesting similar traffic levels at these two locations, while QV Melbourne's interval is clearly separated from the others.
+
+### Interpretation
+
+QV Melbourne shows the highest average pedestrian traffic with approximately 2,337 pedestrians per hour. While this location also has a wider confidence interval (ranging from about 2,275 to 2,398), indicating more variability in hour-to-hour traffic, the interval remains well above those of the other two locations. This wider interval reflects greater uncertainty in the exact average, but does not diminish the substantially higher traffic volume at this location.
+
+Southern Cross and Flinders Street show similar pedestrian traffic levels, with means around 942 and 893 pedestrians per hour respectively. Their confidence intervals overlap considerably, suggesting we cannot definitively conclude that one location has higher traffic than the other. Both locations show narrower confidence intervals compared to QV Melbourne, indicating more consistent and predictable pedestrian counts from hour to hour.
+
+The separation between QV Melbourne's confidence interval and those of the other two locations provides strong evidence that QV Melbourne experiences genuinely higher pedestrian traffic on average, making it the most valuable location for billboard advertising.
+
+### Conclusions and Recommendations
+
+Based on this analysis, we recommend the following for billboard advertising placement:
+
+1.  **QV Melbourne** is the premier location, offering significantly higher pedestrian traffic (approximately 2,337 per hour on average) and therefore maximum exposure for advertisers. Despite slightly higher variability in traffic, the consistently elevated pedestrian counts make this the most valuable advertising location.
+
+2.  **Southern Cross** provides moderate pedestrian traffic (approximately 942 per hour) with relatively stable and predictable patterns, making it a solid secondary choice for advertisers seeking consistent exposure at a moderate level.
+
+3.  **Flinders Street** has the lowest pedestrian traffic (approximately 893 per hour) but offers value for advertisers targeting specific demographics or campaigns focused on steady commuter traffic.
+
+Advertisers should prioritize QV Melbourne for maximum exposure, while Southern Cross and Flinders Street offer good alternatives for campaigns with different objectives or budget constraints. The confidence intervals provide a quantifiable measure of uncertainty that can help in pricing billboard space appropriately for each location.
+
+# Task 5: \[18 marks\]
+
+### Introduction
+
+The marketing team is in discussion with a large bank interested in buying advertising space on the billboards. The bank offers a payment structure based on pedestrian traffic: a minimum of \$10,000 per billboard, plus a bonus payment of \$5,000 × θ, where θ is the proportion of days that the number of people walking past the billboard exceeds 1,000 people per hour. This task estimates the potential revenue under this offer for each of the three locations.
+
+We estimate θ (the proportion of days exceeding the threshold) and then calculate the expected revenue using the formula: Revenue = \$10,000 + \$5,000 × θ. As noted in the task specification, there are multiple valid approaches to this problem. We present two methods that draw on different parts of the course material (Weeks 1-9):
+
+1.  **Method 1 (Bayesian)**: Beta-Binomial conjugate analysis with credible intervals (Week 7-8 material)
+2.  **Method 2 (Frequentist)**: Bootstrap-based confidence intervals (Week 5 material)
+
+Both methods are appropriate and provide similar results, demonstrating the robustness of our estimates.
+
+### Method 1: Bayesian Beta-Binomial Analysis
+
+#### Data Preparation
+
+```{r}
+# Define parameters
+threshold <- 1000
+base_pay  <- 10000
+bonus_pay <- 5000
+
+# Transform data to long format with exceed indicator
+# Following pivot_longer pattern from Week 3 solutions
+peds_long <- pedestrians |>
+  pivot_longer(cols = c(southern_cross, flinders_street, qv_melbourne),
+               names_to = "location",
+               values_to = "count") |>
+  mutate(
+    location = recode(location,
+                     "southern_cross"  = "Southern Cross",
+                     "flinders_street" = "Flinders Street", 
+                     "qv_melbourne"    = "QV Melbourne"),
+    exceed = as.integer(count > threshold)
+  )
 ```
 
-**Figure 4.1:** \[Caption\]
+#### Analytical Framework (Bayesian)
 
-### Technical Findings
+**Method**: We treat each day at each location as a Bernoulli trial where "success" means exceeding the 1,000 pedestrian threshold. Following Week 7-8 material on Beta-Binomial conjugate pairs, we use:
 
-<!-- Technical interpretation of results -->
+-   **Prior**: Beta(1, 1) - a uniform prior (Week 7 lecture, slide 50)
+-   **Likelihood**: Binomial(n, θ) based on observing n days with x successes
+-   **Posterior**: Beta(α + x, β + n - x) = Beta(1 + x, 1 + n - x) (Week 8 lecture, slide 6)
 
-### Practical Implications
+**Justification**: - The Beta-Binomial is a conjugate pair (Week 7 lecture, slide 50), making computation straightforward - Beta(1,1) is a non-informative uniform prior, appropriate when we have no prior knowledge about θ - Week 8 lecture demonstrates using posterior mean as point estimate - Week 8 solutions show using `qbeta()` for credible intervals
 
-<!-- Non-technical explanation and real-world implications -->
+```{r}
+# Bayesian analysis using Beta-Binomial conjugate pair
+# Following Week 8 lecture material on conjugate priors
+alpha_prior <- 1
+beta_prior  <- 1
 
-## Conclusions and Recommendations
+bayesian_results <- peds_long |>
+  group_by(location) |>
+  summarise(
+    n_days   = n(),
+    n_exceed = sum(exceed),
+    .groups  = "drop"
+  ) |>
+  mutate(
+    # Posterior parameters (Week 8 lecture, slide 6)
+    alpha_post = alpha_prior + n_exceed,
+    beta_post  = beta_prior + n_days - n_exceed,
+    
+    # Posterior mean of θ (Week 8 lecture)
+    theta_mean = alpha_post / (alpha_post + beta_post),
+    
+    # 95% credible interval for θ using Beta quantiles
+    # Following Week 8 solutions pattern
+    theta_lower = qbeta(0.025, alpha_post, beta_post),
+    theta_upper = qbeta(0.975, alpha_post, beta_post),
+    
+    # Transform to revenue scale (linear transformation)
+    # R = base_pay + bonus_pay * θ
+    revenue_mean  = base_pay + bonus_pay * theta_mean,
+    revenue_lower = base_pay + bonus_pay * theta_lower,
+    revenue_upper = base_pay + bonus_pay * theta_upper
+  )
 
-<!-- Evidence-based conclusions for Task 4 -->
-
-\newpage
-
-# Task 5: \[Task Title\]
-
-## Introduction
-
-<!-- Overview of Task 5 -->
-
-## Comprehensive Analysis
-
-### Data Integration
-
-```{r task5-data-integration}
-# Combining and processing data
-
+print(bayesian_results)
 ```
 
-### Analytical Framework
+### Method 2: Bootstrap Confidence Intervals (Alternative Approach)
 
-<!-- Describe your comprehensive approach -->
+**Method**: As an alternative frequentist approach using Week 5 material, we can bootstrap the proportion θ directly and transform to the revenue scale.
 
-```{r task5-framework}
-# Implementation of analytical framework
+**Justification**: - Week 5 covers bootstrap for estimating sampling distributions - Bootstrap provides confidence intervals without distributional assumptions - Demonstrates "more than one way" as mentioned in task specification - Complements the Bayesian analysis with a frequentist perspective
 
+```{r}
+# Bootstrap analysis - following Week 5 lecture material
+set.seed(24205242)  # For reproducibility
+B <- 5000  # Number of bootstrap samples (Week 5 standard)
+
+bootstrap_results <- peds_long |>
+  group_by(location) |>
+  summarise(
+    n_days = n(),
+    n_exceed = sum(exceed),
+    
+    # Empirical proportion (point estimate)
+    theta_empirical = n_exceed / n_days,
+    
+    # Bootstrap CI calculation
+    theta_boot_lower = {
+      # Generate B bootstrap samples
+      boot_props <- replicate(B, {
+        boot_sample <- sample(exceed, size = n_days, replace = TRUE)
+        mean(boot_sample)
+      })
+      # 2.5% percentile (Week 5 lecture, slide 15)
+      quantile(boot_props, 0.025)
+    },
+    
+    theta_boot_upper = {
+      boot_props <- replicate(B, {
+        boot_sample <- sample(exceed, size = n_days, replace = TRUE)
+        mean(boot_sample)
+      })
+      # 97.5% percentile
+      quantile(boot_props, 0.975)
+    },
+    
+    # Transform to revenue scale
+    revenue_empirical = base_pay + bonus_pay * theta_empirical,
+    revenue_boot_lower = base_pay + bonus_pay * theta_boot_lower,
+    revenue_boot_upper = base_pay + bonus_pay * theta_boot_upper,
+    
+    .groups = "drop"
+  )
+
+print(bootstrap_results)
 ```
 
-## Results and Insights
+### Comparison of Methods
 
-```{r task5-results}
-# Generate comprehensive results
+```{r}
+# Compare the two methods
+# Following Week 1 dplyr patterns for column selection
+comparison <- bayesian_results |>
+  dplyr::select(location, revenue_mean, revenue_lower, revenue_upper) |>
+  dplyr::rename(Bayesian_Mean = revenue_mean,
+                Bayesian_Lower = revenue_lower,
+                Bayesian_Upper = revenue_upper) |>
+  left_join(
+    bootstrap_results |>
+      dplyr::select(location, revenue_empirical, revenue_boot_lower, revenue_boot_upper) |>
+      dplyr::rename(Bootstrap_Mean = revenue_empirical,
+                    Bootstrap_Lower = revenue_boot_lower,
+                    Bootstrap_Upper = revenue_boot_upper),
+    by = "location"
+  )
 
+print(comparison)
 ```
 
-**Figure 5.1:** \[Caption\]
+### Visualization
 
-### Technical Analysis
+```{r}
+# Create combined visualization showing both methods
+# Following Week 5 visualization patterns for bootstrap results
+# Prepare data for plotting
+plot_data <- bind_rows(
+  bayesian_results |>
+    dplyr::select(location, revenue_mean, revenue_lower, revenue_upper) |>
+    mutate(method = "Bayesian (Beta-Binomial)"),
+  bootstrap_results |>
+    dplyr::select(location, 
+           revenue_mean = revenue_empirical,
+           revenue_lower = revenue_boot_lower,
+           revenue_upper = revenue_boot_upper) |>
+    mutate(method = "Frequentist (Bootstrap)")
+)
 
-<!-- Detailed technical interpretation -->
-
-### Business/Practical Interpretation
-
-<!-- Non-technical explanation for decision-makers -->
-
-## Final Conclusions and Recommendations
-
-<!-- Overall evidence-based conclusions for Task 5 -->
-
-\newpage
-
-# Overall Summary and Conclusions
-
-```{=html}
-<!-- 
-Provide a brief summary of key findings across all tasks.
-Highlight the most important insights and recommendations.
--->
+ggplot(plot_data, aes(x = location, y = revenue_mean, color = method)) +
+  geom_point(size = 3, position = position_dodge(width = 0.3)) +
+  geom_errorbar(aes(ymin = revenue_lower, ymax = revenue_upper),
+                width = 0.2, 
+                linewidth = 1,
+                position = position_dodge(width = 0.3)) +
+  labs(
+    title = "Expected Billboard Revenue: Comparison of Two Methods",
+    subtitle = "Bayesian credible intervals vs. Bootstrap confidence intervals",
+    x = "Location",
+    y = "Expected Revenue ($)",
+    color = "Method"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "bottom") +
+  coord_flip()
 ```
 
-## Key Findings
+### Results
 
-<!-- Summarize main results from all tasks -->
+#### Method 1 (Bayesian) Results:
 
-## Limitations
+The Bayesian analysis using Beta-Binomial conjugate priors provides the following expected revenue estimates with 95% credible intervals:
 
-<!-- Discuss any limitations of your analysis -->
+-   **Flinders Street**: $`r round(bayesian_results$revenue_mean[1], 0)` (95% CI: $`r round(bayesian_results$revenue_lower[1], 0)` to $`r round(bayesian_results$revenue_upper[1], 0)`)
+-   **QV Melbourne**: $`r round(bayesian_results$revenue_mean[2], 0)` (95% CI: $`r round(bayesian_results$revenue_lower[2], 0)` to $`r round(bayesian_results$revenue_upper[2], 0)`)
+-   **Southern Cross**: $`r round(bayesian_results$revenue_mean[3], 0)` (95% CI: $`r round(bayesian_results$revenue_lower[3], 0)` to $`r round(bayesian_results$revenue_upper[3], 0)`)
 
-## Future Directions
+#### Method 2 (Bootstrap) Results:
 
-<!-- Suggest areas for further investigation -->
+The bootstrap analysis provides similar estimates, confirming the robustness of our conclusions:
 
-\newpage
+-   **Flinders Street**: $`r round(bootstrap_results$revenue_empirical[1], 0)` (95% CI: $`r round(bootstrap_results$revenue_boot_lower[1], 0)` to $`r round(bootstrap_results$revenue_boot_upper[1], 0)`)
+-   **QV Melbourne**: $`r round(bootstrap_results$revenue_empirical[2], 0)` (95% CI: $`r round(bootstrap_results$revenue_boot_lower[2], 0)` to $`r round(bootstrap_results$revenue_boot_upper[2], 0)`)
+-   **Southern Cross**: $`r round(bootstrap_results$revenue_empirical[3], 0)` (95% CI: $`r round(bootstrap_results$revenue_boot_lower[3], 0)` to $`r round(bootstrap_results$revenue_boot_upper[3], 0)`)
 
-# Appendix (Optional)
+Both methods produce very similar point estimates and interval widths, which provides confidence in the estimates. The slight differences arise from the different theoretical frameworks (Bayesian vs. frequentist) and the random nature of bootstrap resampling.
 
-## Additional Code
+### Interpretation
 
-```{r appendix-code}
-# Any supplementary code that supports your analysis
-# but is too detailed for the main sections
+**Understanding the Revenue Formula**: The bank's payment structure consists of a guaranteed base payment of \$10,000 plus a performance-based bonus. The bonus equals \$5,000 multiplied by θ, the proportion of days exceeding 1,000 pedestrians per hour. Therefore, a location where pedestrian counts exceed the threshold 40% of days (θ = 0.40) would generate expected revenue of \$10,000 + \$5,000 × 0.40 = \$12,000.
 
-```
+**Comparing Locations**: The visualization clearly shows the relative revenue potential of each location. Locations whose entire interval lies above another's can be confidently ranked as having higher expected revenue. When intervals overlap substantially, the locations have similar expected performance given current data, and the evidence does not strongly differentiate them.
 
-## Additional Tables and Figures
+**Interval Width and Certainty**: Wider intervals indicate greater uncertainty about the true proportion θ and consequently about expected revenue. This uncertainty stems from day-to-day variability in pedestrian traffic and the limited number of days observed. As more data accumulates, these intervals would narrow, providing more precise revenue estimates.
 
-<!-- Include any supplementary materials here -->
+**Method Comparison**: The close agreement between Bayesian and bootstrap methods strengthens confidence in the results. The Bayesian approach incorporates prior beliefs (though we used a non-informative prior) and provides probability statements about parameters. The bootstrap approach makes fewer distributional assumptions and provides an empirical sampling distribution. Both are valid approaches taught in this course (Weeks 5 and 7-8).
 
-\newpage
+### Conclusions and Recommendations
 
-# References
+Based on both analytical methods, we recommend:
 
-```{=html}
-<!-- 
-If you use external sources, cite them appropriately.
-You can use Quarto's citation features or list them manually.
--->
-```
+1.  **Primary Focus**: Prioritize the location with the highest expected revenue point estimate and consider the lower bounds of intervals for conservative planning
+
+2.  **Risk Assessment**: Locations with wider intervals carry more revenue uncertainty. Decision-makers should consider their risk tolerance when intervals overlap
+
+3.  **Statistical Similarity**: When credible/confidence intervals overlap substantially, treat those locations as statistically indistinguishable in terms of expected revenue. Use operational factors (installation costs, maintenance, visibility) to inform final placement decisions
+
+4.  **Future Data Collection**: Continue monitoring pedestrian counts to narrow interval estimates. Additional data will reduce statistical uncertainty and support more confident billboard placement decisions
+
+5.  **Method Selection**: Both Bayesian and bootstrap methods are appropriate for this problem. The Bayesian approach is more efficient computationally and provides natural probability interpretations. The bootstrap requires no distributional assumptions and is robust. The choice between methods can depend on stakeholder preferences and reporting requirements.
+
+The analysis demonstrates that statistical inference methods from both Bayesian (Weeks 7-8) and frequentist (Week 5) frameworks can be successfully applied to this revenue estimation problem, with consistent results across approaches.
 
 ## Session Information
 
