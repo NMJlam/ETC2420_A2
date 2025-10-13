@@ -3,9 +3,9 @@ title: "ETC2420/5242 Assignment 2"
 subtitle: "Group 76"
 author: 
   - "Nathan Lam (338 953 41)"
-  - "Student Name 2 (Student ID)"
-  - "Student Name 3 (Student ID)"
-  - "Student Name 4 (Student ID)"
+  - "Remil Reaz (33110832)"
+  - "Duveen Kalansooriya (33397848)"
+  - "Aryan Patel (34987339)"
 date: "13 October 2025"
 format:
   pdf:
@@ -47,8 +47,6 @@ pedestrians <- read.csv("data/pedestrians.csv")
 ```
 
 \newpage
-
-# REVISE TASK 1-3
 
 # Task 1: \[20 Marks\]
 
@@ -280,29 +278,34 @@ By comparing the results from both methods, we can assess the consistency of the
 
 ## Methods
 
-**Parametric Quantile Method**
+**Model-Based Qunatile with Bootstrap CI**
 
 The parametric method assumes that pedestrian counts follow a known probability distribution. In this analysis, the traffic at each crossing is modelled using either a Normal or Gamma distribution, consistent with the shapes identified in Task 1. Once these models are fitted to the observed data using maximum likelihood estimation (MLE), their estimated parameters are used to calculate the theoretical 90th percentile of pedestrian traffic for each location.
 
-The uncertainty in these estimates is then assessed using a non-parametric bootstrap of the observed data.
+**Approach**: 
+1. Fit the appropriate probability distribution (Normal or Gamma) to the original data 
+   using maximum likelihood estimation (Week 6, slide 51)
+   
+2. Calculate the 90th percentile directly from the fitted model using the quantile 
+   function (`qnorm()` or `qgamma()`)
+   
+3. To quantify uncertainty, use bootstrap resampling following Week 6, slide 37:
 
-The procedure is as follows: 1. Fit the model: Estimate the model parameters (mean and standard deviation for the Normal; shape and rate for the Gamma) from each data set using MASS::fitdistr().
+   - Resample n observations FROM THE OBSERVED DATA with replacement
+   
+   - Refit the same model to each bootstrap sample
+   
+   - Calculate the 90th percentile from each refitted model
+   
+   - Repeat 5,000 times
+   
+4. Form 95% confidence interval using the 2.5th and 97.5th percentiles of the 
+   bootstrap distribution (Week 5, slide 26)
 
-```         
-2.  Resample the data: Draw bootstrap samples from the observed counts with replacement, keeping the same sample size as the original data.
-
-3.  Re-fit and compute: For each bootstrap sample, re-fit the same model and calculate the 90th percentile using the updated parameter estimates (qnorm() or qgamma()).
-
-4.  Repeat and collate: Repeat this process 5 000 times to produce a bootstrap distribution of 90th-percentile estimates.
-
-5.  Construct a confidence interval: Form the 95 % confidence interval by taking the 2.5 th and 97.5 th percentiles of the bootstrap distribution (the percentile bootstrap method).
-```
-
-The parametric bootstrap method leverages the assumed distributional structure of the data. If the fitted parametric model (Normal or Gamma) accurately represents the true population distribution—as validated by the goodness-of-fit diagnostics in Task 1—this approach can provide several advantages:
-
-1.  **Smoothing over sampling irregularities**: The parametric model smooths over random fluctuations and irregularities in the observed sample, potentially leading to more stable and precise estimates when the model assumption holds.
-
-2.  **Validation through comparison**: Comparing parametric and non-parametric bootstrap results serves a dual purpose: if the methods yield similar confidence intervals, this provides evidence that (a) the parametric model assumption is reasonable, and (b) the quantile estimates are robust to methodological choices.
+**Why this approach**: Week 6, slide 37 states: "Resample n draws from the observed 
+data values, with replacement" and "Compute the MLE θ̂[b] by maximising L[b](θ)". 
+This approach leverages the fitted model's structure while properly accounting for 
+sampling variability through resampling the observed data.
 
 **Non-parametric Quantile Method**
 
@@ -360,68 +363,73 @@ find_90th_percentile <- function(data, trials = 5000) {
 **Parametric Quantile Method**
 
 ```{r}
-# ==============================================================================
-# Parametric Bootstrap Method - Combined Function
-# ==============================================================================
-
-find_90thPercentile_model <- function(data, model = "normal", trials = 5000) {
-  # Remove missing/non-finite values
-  x <- as.numeric(data[is.finite(data)])
+find_90th_percentile_model <- function(data, model = "normal", trials = 5000) {
+  # Remove missing values
+  x <- data[!is.na(data)]
   n <- length(x)
   
-  if (n < 2) stop("Need at least 2 observations.")
-  
   if (model == "normal") {
-    # -------------------------------------------------------------------------
-    # Normal Distribution
-    # -------------------------------------------------------------------------
+    # Step 1: Fit model to original data
+    # Following Week 6 lecture, slide 51
+    fit <- MASS::fitdistr(x, "normal")
+    mu_hat <- fit$estimate["mean"]
+    sigma_hat <- fit$estimate["sd"]
     
-    # Fit Normal distribution to original data (MLE)
-    mu_hat <- mean(x)
-    sigma_hat <- sd(x)
+    # Step 2: Calculate model-based 90th percentile (point estimate)
+    q90_point <- qnorm(0.9, mean = mu_hat, sd = sigma_hat)
     
-    # Parametric bootstrap: Generate from fitted Normal distribution
+    # Step 3: Bootstrap CI by RESAMPLING OBSERVED DATA
+    # Following Week 6 lecture, slide 37:
+    # "Resample n draws from the observed data values, with replacement"
     q_boot <- replicate(trials, {
-      # Generate NEW data from Normal(μ̂, σ̂)
-      xb <- rnorm(n, mean = mu_hat, sd = sigma_hat)
-      # Calculate empirical 90th percentile from simulated data
-      quantile(xb, probs = 0.90, type = 7)
+      # Resample the OBSERVED data (not generate new data)
+      xb <- sample(x, size = n, replace = TRUE)
+      
+      # Refit the model to this bootstrap sample
+      fit_b <- MASS::fitdistr(xb, "normal")
+      
+      # Calculate 90th percentile from the refitted model
+      qnorm(0.9, mean = fit_b$estimate["mean"], 
+                 sd = fit_b$estimate["sd"])
     })
     
   } else if (model == "gamma") {
-    # -------------------------------------------------------------------------
-    # Gamma Distribution
-    # -------------------------------------------------------------------------
+    # Step 1: Fit model to original data
+    fit <- MASS::fitdistr(x, "gamma")
+    shape_hat <- fit$estimate["shape"]
+    rate_hat <- fit$estimate["rate"]
     
-    if (any(x <= 0)) stop("Gamma model requires strictly positive data.")
+    # Step 2: Calculate model-based 90th percentile (point estimate)
+    q90_point <- qgamma(0.9, shape = shape_hat, rate = rate_hat)
     
-    # Fit Gamma distribution to original data (MLE)
-    fit <- MASS::fitdistr(x, densfun = "gamma")
-    shape_hat <- unname(fit$estimate["shape"])
-    rate_hat  <- unname(fit$estimate["rate"])
-    
-    # Parametric bootstrap: Generate from fitted Gamma distribution
+    # Step 3: Bootstrap CI by RESAMPLING OBSERVED DATA
     q_boot <- replicate(trials, {
-      # Generate NEW data from Gamma(α̂, β̂)
-      xb <- rgamma(n, shape = shape_hat, rate = rate_hat)
-      # Calculate empirical 90th percentile from simulated data
-      quantile(xb, probs = 0.90, type = 7)
+      # Resample the OBSERVED data
+      xb <- sample(x, size = n, replace = TRUE)
+      
+      # Refit the model to this bootstrap sample
+      fit_b <- MASS::fitdistr(xb, "gamma")
+      
+      # Calculate 90th percentile from the refitted model
+      qgamma(0.9, shape = fit_b$estimate["shape"], 
+                  rate = fit_b$estimate["rate"])
     })
     
   } else {
     stop("Model must be either 'normal' or 'gamma'")
   }
   
-  # Construct 95% CI using percentile bootstrap method
+  # Calculate 95% CI using percentile bootstrap method
+  # Following Week 5 lecture, slide 26 and Week 6 lecture, slide 37
   ci <- quantile(q_boot, c(0.025, 0.975), names = FALSE)
   
-  # Return results
   list(
-    q90_estimate = mean(q_boot),
+    q90_estimate = q90_point,
     ci_lower = ci[1],
     ci_upper = ci[2]
   )
 }
+
 ```
 
 *Histograms and QQ-plots (not shown) confirmed that the Normal model was suitable for Flinder's Street and Southern Cross, while the Gamma model fitted QV Melbourne’s right-skewed distribution.*
@@ -435,13 +443,13 @@ southern_estimate_bootstrap <- find_90th_percentile(southern_cross_traffic)
 
 ```{r}
 # Approach 2: Model Based Quantile
-flinders_param <- find_90thPercentile_model(flinders_street_traffic, model = "normal")
-southern_param <- find_90thPercentile_model(southern_cross_traffic, model = "normal")
-qv_param       <- find_90thPercentile_model(qv_melbourne_traffic, model = "gamma")
+flinders_param <- find_90th_percentile_model(flinders_street_traffic, model = "normal")
+southern_param <- find_90th_percentile_model(southern_cross_traffic, model = "normal")
+qv_param       <- find_90th_percentile_model(qv_melbourne_traffic, model = "gamma")
 ```
 
 ```{r}
-# --- Point estimates (non-bootstrapped) ---
+# --- Point estimates (non-bootstrapped) ---aasdfasdfa
 # Empirical (sample) 90th percentile
 q90_emp_qv       <- quantile(qv_melbourne_traffic,       0.90, type = 7)
 q90_emp_flinders <- quantile(flinders_street_traffic,    0.90, type = 7)
@@ -955,6 +963,8 @@ ggplot(plot_data, aes(x = location, y = revenue_mean, color = method)) +
 #### Method 1 (Bayesian) Results:
 
 The Bayesian analysis using Beta-Binomial conjugate priors provides the following expected revenue estimates with 95% credible intervals:
+
+#### Method 1 (Bayesian) Results:
 
 -   **Flinders Street**: $`r round(bayesian_results$revenue_mean[1], 0)` (95% CI: $`r round(bayesian_results$revenue_lower[1], 0)` to $`r round(bayesian_results$revenue_upper[1], 0)`)
 -   **QV Melbourne**: $`r round(bayesian_results$revenue_mean[2], 0)` (95% CI: $`r round(bayesian_results$revenue_lower[2], 0)` to $`r round(bayesian_results$revenue_upper[2], 0)`)
